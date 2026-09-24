@@ -97,7 +97,7 @@ const fixedNodes: CanvasNode[] = [
     sub: '상태 초기화',
     type: 'start',
     x: 225,
-    y: 18,
+    y: 16,
     w: 130,
     h: 36,
     description: nodeDetails.__start__.desc,
@@ -108,7 +108,7 @@ const fixedNodes: CanvasNode[] = [
     sub: 'LLM 의도 분류 & 도구 결정',
     type: 'router',
     x: 200,
-    y: 86,
+    y: 92,
     w: 180,
     h: 56,
     description: nodeDetails.router.desc,
@@ -119,7 +119,7 @@ const fixedNodes: CanvasNode[] = [
     sub: '파괴적 고위험 검증 (HITL)',
     type: 'safety',
     x: 160,
-    y: 192,
+    y: 196,
     w: 160,
     h: 54,
     description: nodeDetails.safety_check.desc,
@@ -130,7 +130,7 @@ const fixedNodes: CanvasNode[] = [
     sub: 'Proxmox MCP API 실행',
     type: 'tool',
     x: 160,
-    y: 298,
+    y: 300,
     w: 160,
     h: 54,
     description: nodeDetails.tool_executor.desc,
@@ -160,33 +160,48 @@ const fixedNodes: CanvasNode[] = [
 
   // 2. Separate External Service Nodes (Sidecars)
   {
+    id: 'jev_service',
+    name: 'JEV Controller',
+    sub: '거버넌스 & 인프라 오케스트레이터',
+    type: 'jev_service',
+    x: 16,
+    y: 55,
+    w: 154,
+    h: 68,
+    description: 'JEV Controller & Base Auth 프레임워크. 사용자 요청을 최초 접수하여 거버넌스 정책을 바인딩하고 Proxmox VE 인프라를 안전하게 제어합니다.',
+    isExternal: true,
+  },
+  {
     id: 'llm_service',
     name: 'LLM Engine',
     sub: 'OpenAI / Claude',
     type: 'llm_service',
-    x: 425,
-    y: 82,
-    w: 140,
+    x: 415,
+    y: 88,
+    w: 145,
     h: 64,
     description: nodeDetails.llm_service.desc,
-    isExternal: true,
-  },
-  {
-    id: 'jev_service',
-    name: 'JEV Controller',
-    sub: 'Local/Cloud JEV',
-    type: 'jev_service',
-    x: 15,
-    y: 245,
-    w: 125,
-    h: 64,
-    description: nodeDetails.jev_service.desc,
     isExternal: true,
   },
 ];
 
 const fixedEdges: CanvasEdge[] = [
-  // Core Transitions
+  // Core Transitions: 1. START -> JEV Controller (First Entry!)
+  {
+    id: 'e-start-jev',
+    from: '__start__',
+    to: 'jev_service',
+    label: '1. 요청 접수',
+    color: '#10b981',
+  },
+  // 2. JEV Controller -> Router (Delegates intent analysis)
+  {
+    id: 'e-jev-router',
+    from: 'jev_service',
+    to: 'router',
+    label: '2. 의도 분석 위임',
+    color: '#38bdf8',
+  },
   {
     id: 'e-start-router',
     from: '__start__',
@@ -327,8 +342,10 @@ export function LangGraphCanvas({
     if (curr && curr !== prev) {
       let targetEdgeId: string | null = null;
 
-      if (curr === 'router') {
-        targetEdgeId = 'e-start-router';
+      if (curr === 'jev_service') {
+        targetEdgeId = 'e-start-jev';
+      } else if (curr === 'router') {
+        targetEdgeId = prev === 'jev_service' ? 'e-jev-router' : 'e-start-router';
       } else if (curr === 'safety_check') {
         targetEdgeId = 'e-router-safety';
       } else if (curr === 'tool_executor') {
@@ -395,6 +412,18 @@ export function LangGraphCanvas({
     const toNode = fixedNodes.find((n) => n.id === edge.to);
     if (!fromNode || !toNode) return null;
 
+    if (edge.id === 'e-start-jev') {
+      const p0 = { x: fromNode.x + 20, y: fromNode.y + fromNode.h };
+      const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
+      return { p0, p1: { x: toNode.x + toNode.w / 2, y: p0.y + 10 }, p2: { x: toNode.x + toNode.w / 2, y: p3.y - 10 }, p3 };
+    }
+
+    if (edge.id === 'e-jev-router') {
+      const p0 = { x: fromNode.x + fromNode.w, y: fromNode.y + fromNode.h / 2 };
+      const p3 = { x: toNode.x, y: toNode.y + toNode.h / 2 };
+      return { p0, p1: { x: (p0.x + p3.x) / 2, y: p0.y }, p2: { x: (p0.x + p3.x) / 2, y: p3.y }, p3 };
+    }
+
     if (edge.id === 'e-start-router') {
       const p0 = { x: fromNode.x + fromNode.w / 2, y: fromNode.y + fromNode.h };
       const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
@@ -453,14 +482,14 @@ export function LangGraphCanvas({
 
     if (edge.id === 'e-jev-tool') {
       const p0 = { x: fromNode.x, y: fromNode.y + fromNode.h / 2 };
-      const p3 = { x: toNode.x + toNode.w, y: toNode.y + toNode.h / 2 };
-      return { p0, p1: { x: (p0.x + p3.x) / 2, y: p0.y }, p2: { x: (p0.x + p3.x) / 2, y: p3.y }, p3 };
+      const p3 = { x: toNode.x + 40, y: toNode.y + toNode.h };
+      return { p0, p1: { x: toNode.x + 40, y: p0.y }, p2: { x: toNode.x + 40, y: p3.y + 20 }, p3 };
     }
 
     if (edge.id === 'e-jev-safety') {
       const p0 = { x: fromNode.x, y: fromNode.y + 20 };
-      const p3 = { x: toNode.x + toNode.w, y: toNode.y + 20 };
-      return { p0, p1: { x: (p0.x + p3.x) / 2, y: p0.y }, p2: { x: (p0.x + p3.x) / 2, y: p3.y }, p3 };
+      const p3 = { x: toNode.x + toNode.w - 30, y: toNode.y + toNode.h };
+      return { p0, p1: { x: toNode.x + toNode.w - 30, y: p0.y }, p2: { x: toNode.x + toNode.w - 30, y: p3.y + 20 }, p3 };
     }
 
     return null;

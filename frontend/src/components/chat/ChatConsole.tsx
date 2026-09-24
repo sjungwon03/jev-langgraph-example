@@ -274,13 +274,13 @@ export function ChatConsole() {
     setInput('');
     setIsStreaming(true);
 
-    // 1. START -> Router: Trigger LLM reasoning
+    // ⚡ 1. START -> JEV Controller: First point of entry & governance binding
     setExecutionState({
-      activeNodeId: 'router',
-      visitedNodeIds: ['__start__', 'router'],
-      isLlmActive: true,
-      isJevActive: false,
-      statusMessage: `질의 접수 ("${query.slice(0, 18)}..."): LLM 의도 분석 및 도구 매핑 중`,
+      activeNodeId: 'jev_service',
+      visitedNodeIds: ['__start__', 'jev_service'],
+      isLlmActive: false,
+      isJevActive: true,
+      statusMessage: `⚡ JEV Controller: 사용자 요청 접수 및 거버넌스 정책(역할: ${role === 'INFRA_TEAM' ? '인프라 관리팀' : '서비스 개발팀'}) 검증 중...`,
     });
 
     try {
@@ -316,10 +316,13 @@ export function ChatConsole() {
 
               // State Machine visual transitions
               if (chunk.type === 'thought') {
+                const isJev = Boolean(chunk.content?.includes('JEV Controller'));
                 setExecutionState((prev) => ({
                   ...prev,
-                  activeNodeId: 'router',
-                  isLlmActive: true,
+                  activeNodeId: isJev ? 'jev_service' : 'router',
+                  isLlmActive: !isJev,
+                  isJevActive: isJev,
+                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, isJev ? 'jev_service' : 'router'])),
                   statusMessage: chunk.content,
                 }));
               } else if (chunk.type === 'decision') {
@@ -333,10 +336,10 @@ export function ChatConsole() {
                   activeNodeId: hasTool ? 'safety_check' : 'synthesizer',
                   visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, hasTool ? 'safety_check' : 'synthesizer'])),
                   isLlmActive: !hasTool,
-                  isJevActive: false,
+                  isJevActive: hasTool,
                   statusMessage: hasTool
-                    ? `도구 결정 [${chunk.decision?.tool}]: JEV 안전 거버넌스 가드레일 검증`
-                    : '일반 질문: Synthesizer 대화 답변 생성',
+                    ? `도구 결정 [${chunk.decision?.tool}]: ⚡ JEV 안전 거버넌스 가드레일 검증`
+                    : '일반 질문: 🤖 LLM Synthesizer 대화 답변 생성',
                 }));
               } else if (chunk.type === 'confirmation_required') {
                 setExecutionState((prev) => ({
@@ -344,8 +347,8 @@ export function ChatConsole() {
                   activeNodeId: 'safety_check',
                   visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'safety_check'])),
                   isLlmActive: false,
-                  isJevActive: false,
-                  statusMessage: '⚠️ 고위험 작업 감지: 사용자 Human-in-the-Loop 승인 대기',
+                  isJevActive: true,
+                  statusMessage: '⚠️ 고위험 작업 감지: ⚡ JEV Safety Gate Human-in-the-Loop 승인 대기',
                 }));
               } else if (chunk.type === 'tool_start') {
                 setExecutionState((prev) => ({
@@ -354,7 +357,7 @@ export function ChatConsole() {
                   visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'tool_executor'])),
                   isLlmActive: false,
                   isJevActive: true,
-                  statusMessage: `JEV Controller: Proxmox ${chunk.tool}() 실행 중...`,
+                  statusMessage: `⚡ JEV Controller: Proxmox ${chunk.tool}() 실행 중...`,
                 }));
               } else if (chunk.type === 'tool_end') {
                 setExecutionState((prev) => ({
@@ -363,7 +366,7 @@ export function ChatConsole() {
                   visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'synthesizer'])),
                   isLlmActive: true,
                   isJevActive: false,
-                  statusMessage: '실행 결과 수신: 최종 대화 응답 합성 중',
+                  statusMessage: '실행 결과 수신: 🤖 LLM 최종 대화 응답 합성 중...',
                 }));
               } else if (chunk.type === 'done') {
                 setExecutionState((prev) => ({

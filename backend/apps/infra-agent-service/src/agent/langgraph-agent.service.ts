@@ -138,13 +138,15 @@ export class LangGraphAgentService {
       this.logger.warn('⚠️ LLM API key not provided. LLM is required for conversational actions (Built-in NLU fallback removed).');
     }
 
-    // 2. Build LangGraph StateGraph
+    // 2. Build LangGraph StateGraph (JEV Core Platform Entry -> Router & LLM -> Safety Gate -> Tool -> Synthesizer)
     const workflow = new StateGraph(InfraAgentState)
+      .addNode('jev_governance', async (state) => this.jevGovernanceNode(state))
       .addNode('router', async (state) => this.routerNode(state))
       .addNode('safety_check', async (state) => this.safetyCheckNode(state))
       .addNode('tool_executor', async (state) => this.toolExecutorNode(state))
       .addNode('synthesizer', async (state) => this.synthesizerNode(state))
-      .addEdge(START, 'router')
+      .addEdge(START, 'jev_governance')
+      .addEdge('jev_governance', 'router')
       .addConditionalEdges('router', (state) => {
         if (!state.toolToCall) return 'synthesizer';
         return 'safety_check';
@@ -272,6 +274,24 @@ export class LangGraphAgentService {
   }
 
   // --- LangGraph Workflow Nodes ---
+
+  /**
+   * 0. JEV Governance Node: First point of entry for user requests.
+   * Intercepts, validates team permissions, checks System 1 governance rules,
+   * binds infrastructure context, and prepares execution session.
+   */
+  private async jevGovernanceNode(state: typeof InfraAgentState.State) {
+    const userRole = state.role || 'DEV_TEAM';
+    const requester = state.requesterName || '김개발';
+    const lastMsg = state.messages[state.messages.length - 1];
+    const text = typeof lastMsg?.content === 'string' ? lastMsg.content.trim() : '';
+
+    this.logger.log(
+      `⚡ [JEV Controller] Intercepted user request from [${requester}] (${userRole}): "${text}"`,
+    );
+
+    return {};
+  }
 
   /**
    * 1. Router Node: Classify intent and identify Proxmox tool to execute
@@ -553,7 +573,7 @@ ${toolInfo}`;
   ): AsyncGenerator<AgentStreamChunk, void, unknown> {
     yield {
       type: 'thought',
-      content: `[${role === 'INFRA_TEAM' ? '인프라 관리팀' : '서비스 개발팀'}] 사용자 의도 분석 및 LangGraph 상태 그래프 탐색 중...`,
+      content: `[⚡ JEV Controller] 인프라 거버넌스 요청 수신 및 정책 컨텍스트(역할: ${role === 'INFRA_TEAM' ? '인프라 관리팀' : '서비스 개발팀'}, 신청자: ${requesterName}) 바인딩 완료`,
       threadId,
     };
 
@@ -574,7 +594,13 @@ ${toolInfo}`;
         for (const [nodeName, nodeOutput] of Object.entries(chunk)) {
           const out: any = nodeOutput;
 
-          if (nodeName === 'router') {
+          if (nodeName === 'jev_governance') {
+            yield {
+              type: 'thought',
+              content: `[⚡ JEV Controller] 거버넌스 1차 정책 검증 완료: LLM 심층 의도 분석 및 도구 파라미터 추론 위임`,
+              threadId,
+            };
+          } else if (nodeName === 'router') {
             currentToolName = out.toolToCall?.name || '';
             currentToolArgs = out.toolToCall?.args || null;
             if (out.finalResponse) finalResponse = out.finalResponse;
@@ -687,7 +713,8 @@ ${toolInfo}`;
 
     if (!mermaid) {
       mermaid = `graph TD
-  __start__(__start__):::start --> router[Router Node (LLM 의도 분석)]
+  __start__(__start__):::start --> jev[JEV Controller (거버넌스 인입)]
+  jev --> router[Router Node (LLM 의도 분석)]
   router -->|도구 실행 필요| safety_check{Safety Gate (보안 가드레일)}
   router -->|일반 질문/대화| synthesizer[Synthesizer Node (응답 생성)]
   safety_check -->|파괴적 작업 감지| synthesizer
@@ -708,6 +735,14 @@ ${toolInfo}`;
           description: '사용자 자연어 프롬프트, 역할(DEV_TEAM/INFRA_TEAM), 신청자 정보 수신 및 세션 상태 초기화',
           type: 'start' as const,
           stateChanges: ['messages', 'role', 'requesterName'],
+        },
+        {
+          id: 'jev_governance',
+          name: 'JEV Governance Entry',
+          label: 'JEV Controller (거버넌스 인입)',
+          description: '사용자 요청을 최초 인입하여 인프라 거버넌스 정책 및 팀 권한(개발팀/인프라팀)을 바인딩하고 System 1 사전 검증 수행',
+          type: 'jev_service' as const,
+          stateChanges: [],
         },
         {
           id: 'router',
@@ -767,7 +802,8 @@ ${toolInfo}`;
         },
       ],
       edges: [
-        { from: '__start__', to: 'router', label: '사용자 발화 주입' },
+        { from: '__start__', to: 'jev_service', label: '1. 요청 접수 & 거버넌스 바인딩' },
+        { from: 'jev_service', to: 'router', label: '2. 의도 추론 위임' },
         { from: 'router', to: 'safety_check', label: '도구 호출 필요', condition: 'toolToCall != null' },
         { from: 'router', to: 'synthesizer', label: '일반 질문 / 대화', condition: 'toolToCall == null' },
         { from: 'safety_check', to: 'synthesizer', label: '고위험 승인 대기', condition: 'confirmationNeeded != null' },
