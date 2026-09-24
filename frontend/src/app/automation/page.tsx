@@ -37,6 +37,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 
 export default function AutomationPage() {
   const [rules, setRules] = useState<AutomationRule[]>([]);
@@ -112,10 +113,11 @@ export default function AutomationPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <Header onRefresh={loadData} isRefreshing={loading} />
+    <AuthGuard allowedRoles={['INFRA_TEAM']}>
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <Header onRefresh={loadData} isRefreshing={loading} />
 
-      <main className="flex-1 overflow-y-auto p-6 space-y-6">
+        <main className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Section 1: Automation Rules */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
@@ -440,6 +442,7 @@ export default function AutomationPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

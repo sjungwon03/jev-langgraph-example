@@ -29,54 +29,34 @@ export function Header({ onRefresh, isRefreshing }: HeaderProps) {
           <span>Proxmox VE Live</span>
         </div>
 
-        {/* Role Switcher (Segmented Control) */}
-        <div className="flex items-center bg-slate-900/90 border border-slate-800/80 p-0.5 rounded-lg text-xs">
-          <button
-            onClick={() => setRole('DEV_TEAM')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all font-medium ${
-              role === 'DEV_TEAM'
-                ? 'bg-slate-800 text-slate-100 shadow-sm border border-slate-700/60'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <UserCheck className="w-3.5 h-3.5 text-blue-400" />
-            개발팀 모드
-          </button>
-          <button
-            onClick={() => setRole('INFRA_TEAM')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all font-medium ${
-              role === 'INFRA_TEAM'
-                ? 'bg-slate-800 text-slate-100 shadow-sm border border-slate-700/60'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5 text-amber-400" />
-            인프라팀 모드
-          </button>
+        {/* Authenticated Team Badge */}
+        <div
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium border ${
+            role === 'INFRA_TEAM'
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+              : 'bg-blue-500/10 border-blue-500/30 text-blue-300'
+          }`}
+        >
+          {role === 'INFRA_TEAM' ? (
+            <>
+              <Shield className="w-3.5 h-3.5 text-amber-400" />
+              <span>인프라 관리팀</span>
+            </>
+          ) : (
+            <>
+              <UserCheck className="w-3.5 h-3.5 text-blue-400" />
+              <span>서비스 개발팀</span>
+            </>
+          )}
         </div>
 
         {/* Current User Session Info */}
-        {isAuthenticated && user ? (
+        {isAuthenticated && user && (
           <span className="text-xs text-slate-400 hidden lg:inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-            <span>접속자:</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             <strong className="text-slate-200 font-semibold">{user.name}</strong>
             <span className="text-slate-500 text-[11px]">({user.department})</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-medium ${
-                user.role === 'DEV_TEAM'
-                  ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              }`}
-            >
-              {user.role === 'DEV_TEAM' ? 'DEV' : 'INFRA'}
-            </span>
-          </span>
-        ) : (
-          <span className="text-xs text-slate-500 hidden md:inline-flex items-center gap-1.5">
-            <span>세션:</span>
-            <span className="text-slate-300 font-medium">{requesterName}</span>
-            <span className="text-slate-500 text-[11px]">({department})</span>
+            <span className="text-slate-600 text-xs font-mono hidden xl:inline">• {user.email}</span>
           </span>
         )}
       </div>

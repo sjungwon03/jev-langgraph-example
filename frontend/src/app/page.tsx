@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, ClipboardCheck } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { StatCards } from '@/components/dashboard/StatCards';
 import { NodeCard } from '@/components/dashboard/NodeCard';
@@ -9,8 +10,10 @@ import { VmTable } from '@/components/dashboard/VmTable';
 import { CreateVmModal } from '@/components/dashboard/CreateVmModal';
 import { ClusterSummary, fetchClusterSummary } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { useUserRole } from '@/lib/role-context';
 
 export default function DashboardPage() {
+  const { role } = useUserRole();
   const [summary, setSummary] = useState<ClusterSummary | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,14 +77,27 @@ export default function DashboardPage() {
               <h2 className="text-base font-semibold text-slate-100">가상 인스턴스 현황</h2>
               <p className="text-xs text-slate-400">배포된 가상머신(QEMU) 및 컨테이너(LXC) 자원 및 라이프사이클 관리</p>
             </div>
-            <Button
-              onClick={() => setIsCreateModalOpen(true)}
-              size="sm"
-              className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700"
-            >
-              <Plus className="w-4 h-4" />
-              <span>새 인스턴스 배포</span>
-            </Button>
+            {role === 'INFRA_TEAM' ? (
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                size="sm"
+                className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700"
+              >
+                <Plus className="w-4 h-4" />
+                <span>새 인스턴스 배포</span>
+              </Button>
+            ) : (
+              <Button
+                asChild
+                size="sm"
+                className="flex items-center gap-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white"
+              >
+                <Link href="/requests">
+                  <ClipboardCheck className="w-4 h-4" />
+                  <span>새 자원 요청 신청</span>
+                </Link>
+              </Button>
+            )}
           </div>
           <VmTable vms={summary?.vms || []} onActionComplete={loadData} />
         </section>

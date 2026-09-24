@@ -10,6 +10,7 @@ import { Card, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useUserRole } from '@/lib/role-context';
 
 interface VmTableProps {
   vms: ProxmoxVm[];
@@ -17,6 +18,8 @@ interface VmTableProps {
 }
 
 export function VmTable({ vms, onActionComplete }: VmTableProps) {
+  const { role } = useUserRole();
+  const isInfra = role === 'INFRA_TEAM';
   const [loadingVm, setLoadingVm] = useState<number | null>(null);
   const [selectedSnapshotVm, setSelectedSnapshotVm] = useState<ProxmoxVm | null>(null);
   const [selectedResizeVm, setSelectedResizeVm] = useState<ProxmoxVm | null>(null);
@@ -231,16 +234,18 @@ export function VmTable({ vms, onActionComplete }: VmTableProps) {
                           >
                             <RotateCw className="w-3 h-3" />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            disabled={isLoading}
-                            onClick={() => handleAction(vm.node, vm.vmid, 'force_stop')}
-                            className="h-7 w-7 rounded bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-rose-400 border-slate-700"
-                            title="강제 종료 (Force Stop)"
-                          >
-                            <PowerOff className="w-3 h-3" />
-                          </Button>
+                          {isInfra && (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              disabled={isLoading}
+                              onClick={() => handleAction(vm.node, vm.vmid, 'force_stop')}
+                              className="h-7 w-7 rounded bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-rose-400 border-slate-700"
+                              title="강제 종료 (Force Stop - 인프라팀 권한)"
+                            >
+                              <PowerOff className="w-3 h-3" />
+                            </Button>
+                          )}
                         </>
                       )}
                       {/* Snapshot & Disk Resize Controls */}
@@ -254,26 +259,30 @@ export function VmTable({ vms, onActionComplete }: VmTableProps) {
                       >
                         <Camera className="w-3 h-3" />
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        disabled={isLoading}
-                        onClick={() => setSelectedResizeVm(vm)}
-                        className="h-7 w-7 rounded bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border-slate-700"
-                        title="디스크 용량 증설"
-                      >
-                        <HardDrive className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        disabled={isLoading}
-                        onClick={() => handleAction(vm.node, vm.vmid, 'delete')}
-                        className="h-7 w-7 rounded bg-slate-800 text-slate-400 hover:text-rose-400 hover:bg-slate-700 border-slate-700"
-                        title="삭제 (Delete)"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
+                      {isInfra && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled={isLoading}
+                            onClick={() => setSelectedResizeVm(vm)}
+                            className="h-7 w-7 rounded bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border-slate-700"
+                            title="디스크 용량 증설 (인프라팀 권한)"
+                          >
+                            <HardDrive className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled={isLoading}
+                            onClick={() => handleAction(vm.node, vm.vmid, 'delete')}
+                            className="h-7 w-7 rounded bg-slate-800 text-slate-400 hover:text-rose-400 hover:bg-slate-700 border-slate-700"
+                            title="삭제 (Delete - 인프라팀 권한)"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

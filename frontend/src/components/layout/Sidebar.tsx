@@ -10,18 +10,42 @@ export function Sidebar() {
   const pathname = usePathname();
   const { role, user } = useUserRole();
 
-  const navItems = [
-    { href: '/', label: '인프라 대시보드', icon: LayoutDashboard },
-    { href: '/infra', label: '아키텍처 및 자원', icon: Network },
-    {
-      href: '/requests',
-      label: role === 'INFRA_TEAM' ? '자원 승인 센터' : '자원 요청 센터',
-      icon: ClipboardCheck,
-      badge: role === 'INFRA_TEAM' ? '심사' : '신청',
-    },
-    { href: '/chat', label: '인프라 제어 콘솔', icon: MessageSquare },
-    { href: '/automation', label: '자동화 및 감사로그', icon: Zap },
-  ];
+  const isInfra = role === 'INFRA_TEAM';
+
+  const navItems = isInfra
+    ? [
+        { href: '/', label: '클러스터 전체 대시보드', icon: LayoutDashboard },
+        { href: '/infra', label: '인프라 및 자원 토폴로지', icon: Network },
+        {
+          href: '/requests',
+          label: '자원 심사 및 승인 센터',
+          icon: ClipboardCheck,
+          badge: '심사',
+        },
+        { href: '/chat', label: '인프라 제어 콘솔', icon: MessageSquare },
+        {
+          href: '/automation',
+          label: '자동화 및 감사 거버넌스',
+          icon: Zap,
+          badge: '관리자',
+        },
+      ]
+    : [
+        { href: '/', label: '서비스 및 인스턴스 현황', icon: LayoutDashboard },
+        {
+          href: '/requests',
+          label: '자원 요청 및 진행 센터',
+          icon: ClipboardCheck,
+          badge: '신청',
+        },
+        { href: '/chat', label: 'AI 질의 및 어시스턴트', icon: MessageSquare },
+        {
+          href: '/infra',
+          label: '클러스터 아키텍처 조회',
+          icon: Network,
+          badge: '조회',
+        },
+      ];
 
   return (
     <aside className="w-60 border-r border-slate-800/80 bg-slate-950 flex flex-col justify-between shrink-0">

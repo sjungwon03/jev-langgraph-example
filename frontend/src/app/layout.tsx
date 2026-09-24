@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Sidebar } from '@/components/layout/Sidebar';
 import { RoleProvider } from '@/lib/role-context';
+import { AppShell } from '@/components/layout/AppShell';
 
 export const metadata: Metadata = {
   title: 'Proxmox MCP & LangGraph AI Control Center',
@@ -17,10 +17,9 @@ export default function RootLayout({
     <html lang="ko" className="dark">
       <body className="min-h-screen flex bg-[#070b13] text-slate-100">
         <RoleProvider>
-          <Sidebar />
-          <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+          <AppShell>
             {children}
-          </div>
+          </AppShell>
         </RoleProvider>
       </body>
     </html>

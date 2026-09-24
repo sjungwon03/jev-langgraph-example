@@ -16,6 +16,7 @@ interface RoleContextType {
   user: UserProfile | null;
   token: string | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   role: UserRole;
   requesterName: string;
   department: string;
@@ -35,23 +36,16 @@ interface RoleContextType {
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
-const DEFAULT_DEV_USER: UserProfile = {
-  id: 'usr_dev_001',
-  email: 'dev@company.com',
-  name: '김개발',
-  department: '서비스개발1팀',
-  role: 'DEV_TEAM',
-};
-
 export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(DEFAULT_DEV_USER);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Fallback defaults
   const [role, setRoleState] = useState<UserRole>('DEV_TEAM');
-  const [requesterName, setRequesterNameState] = useState<string>('김개발');
-  const [department, setDepartmentState] = useState<string>('서비스개발1팀');
+  const [requesterName, setRequesterNameState] = useState<string>('');
+  const [department, setDepartmentState] = useState<string>('');
 
   useEffect(() => {
     try {
@@ -67,7 +61,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         setRequesterNameState(savedUser.name);
         setDepartmentState(savedUser.department);
 
-        // Background session verification
+        // Verify session in background
         fetchCurrentUser(savedToken)
           .then((verifiedUser) => {
             setUser(verifiedUser);
@@ -77,18 +71,17 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('pve_auth_user', JSON.stringify(verifiedUser));
           })
           .catch(() => {
-            // Keep local state or clear if expired
+            // Token expired or invalid
+            logout();
+          })
+          .finally(() => {
+            setIsLoading(false);
           });
-      } else {
-        // Initialize default dev account if empty
-        setUser(DEFAULT_DEV_USER);
-        setToken('dev_initial_session');
-        setIsAuthenticated(true);
-        setRoleState(DEFAULT_DEV_USER.role);
-        setRequesterNameState(DEFAULT_DEV_USER.name);
-        setDepartmentState(DEFAULT_DEV_USER.department);
+        return;
       }
     } catch {}
+
+    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<UserProfile> => {
@@ -140,6 +133,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setToken(null);
     setIsAuthenticated(false);
+    setRequesterNameState('');
+    setDepartmentState('');
     try {
       localStorage.removeItem('pve_auth_token');
       localStorage.removeItem('pve_auth_user');
@@ -187,6 +182,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         user,
         token,
         isAuthenticated,
+        isLoading,
         role,
         requesterName,
         department,
