@@ -245,18 +245,20 @@ export class LangGraphAgentService {
       `---\n\n` +
       `### 2️⃣ JEV (TypeSafe AI Engine & Base Auth) 설정\n` +
       `JEV 라이브러리의 Fetch Override 및 HTTP Basic(Base Auth) / Bearer 인증을 통해 인프라 거버넌스 및 의사결정 엔진과 통신합니다.\n\n` +
-      `#### • JEV 기본 게이트웨이 설정 (Bearer 인증)\n` +
+      `#### • 클라우드 JEV 게이트웨이 설정 (Bearer 인증)\n` +
       `\`\`\`yaml\n` +
       `environment:\n` +
       `  - JEV_BASE_URL=https://api.typesafe.ai # JEV 게이트웨이 엔드포인트 URL\n` +
       `  - JEV_API_KEY=your-jev-api-key         # JEV Bearer API 키\n` +
       `  - JEV_AUTH_TYPE=bearer                 # 인증 타입 (기본: bearer)\n` +
       `\`\`\`\n\n` +
-      `#### • JEV Base Auth (HTTP Basic Auth) 활성화 시\n` +
+      `#### • 로컬 JEV 게이트웨이 / 프록시 설정 (로컬 환경)\n` +
       `\`\`\`yaml\n` +
       `environment:\n` +
-      `  - JEV_USE_BASE_AUTH=true               # HTTP Basic Base Auth 활성화 여부\n` +
-      `  - JEV_AUTH_TYPE=basic                  # 인증 스키마\n` +
+      `  - JEV_BASE_URL=http://localhost:8000   # 로컬 직접 실행 시\n` +
+      `  # 도커 환경에서 호스트 머신 연결 시: http://host.docker.internal:8000\n` +
+      `  - JEV_USE_BASE_AUTH=true               # 로컬 Base Auth (HTTP Basic Auth) 활성화 여부\n` +
+      `  - JEV_AUTH_TYPE=basic                  # 인증 스키마 (basic 또는 bearer)\n` +
       `  - JEV_BASE_AUTH_USER=admin             # Base Auth 사용자 ID / 계정명\n` +
       `  - JEV_BASE_AUTH_PASS=secret1234!       # Base Auth 패스워드 또는 시크릿\n` +
       `\`\`\`\n\n` +
@@ -699,6 +701,22 @@ ${toolInfo}`;
           type: 'end' as const,
           stateChanges: [],
         },
+        {
+          id: 'llm_service',
+          name: 'LLM Engine',
+          label: 'LLM Engine (OpenAI/vLLM)',
+          description: '외부 대형 언어 모델 서비스. 의도 추론(Router) 및 최종 응답 합성(Synthesizer)을 수행합니다.',
+          type: 'llm_service' as const,
+          stateChanges: [],
+        },
+        {
+          id: 'jev_service',
+          name: 'JEV Controller',
+          label: 'JEV Controller (Base Auth)',
+          description: 'JEV Controller & Base Auth 프레임워크 (Cloud: https://api.typesafe.ai | Local: http://localhost:8000). Proxmox VE 8.2 가상화 인프라와 안전하게 통신합니다.',
+          type: 'jev_service' as const,
+          stateChanges: [],
+        },
       ],
       edges: [
         { from: '__start__', to: 'router', label: '사용자 발화 주입' },
@@ -708,6 +726,10 @@ ${toolInfo}`;
         { from: 'safety_check', to: 'tool_executor', label: '안전 작업 승인 통과', condition: 'confirmationNeeded == null' },
         { from: 'tool_executor', to: 'synthesizer', label: '실행 결과 전달' },
         { from: 'synthesizer', to: '__end__', label: '최종 스트리밍 완료' },
+        { from: 'router', to: 'llm_service', label: '의도 분류 질의' },
+        { from: 'synthesizer', to: 'llm_service', label: '답변 합성 질의' },
+        { from: 'safety_check', to: 'jev_service', label: '보안 정책 평가' },
+        { from: 'tool_executor', to: 'jev_service', label: 'Proxmox 제어 RPC' },
       ],
     };
   }

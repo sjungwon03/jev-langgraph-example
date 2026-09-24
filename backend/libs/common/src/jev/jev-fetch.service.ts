@@ -168,7 +168,7 @@ export class JevClient {
       customHeaders: options.customHeaders,
     };
 
-    this.baseUrl = (options.baseUrl || process.env.JEV_BASE_URL || process.env.LLM_BASE_URL || 'https://api.typesafe.ai').replace(/\/+$/, '');
+    this.baseUrl = (options.baseUrl || process.env.JEV_BASE_URL || 'https://api.typesafe.ai').replace(/\/+$/, '');
     this.timeoutMs = options.timeout || 30000;
     this.customFetch = createJevFetch(this.config, options.baseFetch || globalThis.fetch);
 

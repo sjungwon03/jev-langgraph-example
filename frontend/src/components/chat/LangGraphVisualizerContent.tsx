@@ -14,6 +14,7 @@ import {
   RefreshCw,
   ArrowRight,
   Sparkles,
+  Server,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -82,6 +83,10 @@ export function LangGraphVisualizerContent({
         return <MessageSquare className="w-4 h-4 text-emerald-400" />;
       case 'end':
         return <CheckCircle2 className="w-4 h-4 text-indigo-400" />;
+      case 'llm_service':
+        return <Brain className="w-4 h-4 text-cyan-400" />;
+      case 'jev_service':
+        return <Server className="w-4 h-4 text-emerald-400" />;
       default:
         return <GitFork className="w-4 h-4 text-slate-400" />;
     }
@@ -107,6 +112,10 @@ export function LangGraphVisualizerContent({
         return 'border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-400/80';
       case 'end':
         return 'border-indigo-500/40 bg-indigo-950/20 hover:border-indigo-400/80';
+      case 'llm_service':
+        return 'border-cyan-500/40 bg-cyan-950/20 hover:border-cyan-400/80';
+      case 'jev_service':
+        return 'border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-400/80';
       default:
         return 'border-slate-800 bg-slate-900/60 hover:border-slate-700';
     }

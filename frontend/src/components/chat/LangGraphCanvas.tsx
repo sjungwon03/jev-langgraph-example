@@ -85,7 +85,7 @@ const nodeDetails: Record<string, { desc: string }> = {
     desc: '외부 대형 언어 모델 서비스(OpenAI gpt-4o-mini / vLLM). 의도 추론(Router) 및 답변 합성(Synthesizer)을 수행합니다.',
   },
   jev_service: {
-    desc: 'JEV Controller & Base Auth 프레임워크. Proxmox VE 8.2 가상화 인프라와 안전하게 통신합니다.',
+    desc: 'JEV Controller & Base Auth 프레임워크 (Cloud: https://api.typesafe.ai | Local: http://localhost:8000). Proxmox VE 8.2 가상화 인프라와 안전하게 통신합니다.',
   },
 };
 
@@ -174,7 +174,7 @@ const fixedNodes: CanvasNode[] = [
   {
     id: 'jev_service',
     name: 'JEV Controller',
-    sub: 'Proxmox VE 8.2',
+    sub: 'Local/Cloud JEV',
     type: 'jev_service',
     x: 15,
     y: 245,
