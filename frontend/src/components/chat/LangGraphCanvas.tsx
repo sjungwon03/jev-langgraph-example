@@ -67,7 +67,7 @@ const nodeDetails: Record<string, { desc: string }> = {
     desc: '사용자의 자연어 메시지를 주입받아 LangGraph InfraAgentState 세션을 초기화합니다.',
   },
   router: {
-    desc: '외부 LLM 서비스를 호출하여 발화 의도를 심층 분류하고 필요한 Proxmox 도구 및 인수를 추론합니다.',
+    desc: 'LLM(대형 언어 모델)을 호출하여 발화 의도를 심층 분석하고 필요한 Proxmox 도구 및 인수를 추론합니다.',
   },
   safety_check: {
     desc: 'JEV 보안 정책 엔진 연동. VM 삭제/강제종료 등 파괴적 고위험 작업 감지 시 HITL 승인 토큰을 발급합니다.',
@@ -76,13 +76,13 @@ const nodeDetails: Record<string, { desc: string }> = {
     desc: 'JEV Controller API를 통해 Proxmox VE 8.2 클러스터 명령 및 자원 티켓을 원격 실행합니다.',
   },
   synthesizer: {
-    desc: '도구 실행 결과를 외부 LLM과 종합하여 최종 한국어 마크다운 대화형 답변을 생성합니다.',
+    desc: 'LLM(대형 언어 모델)을 호출하여 도구 실행 결과를 취합하고 최종 한국어 마크다운 대화형 답변을 생성합니다.',
   },
   __end__: {
     desc: 'SSE 스트리밍 전송을 정상 종료하고 세션 상태 및 감사 로그를 최종 커밋합니다.',
   },
   llm_service: {
-    desc: '외부 대형 언어 모델 서비스(OpenAI gpt-4o-mini / vLLM). 의도 추론(Router) 및 답변 합성(Synthesizer)을 수행합니다.',
+    desc: '외부 Cloud LLM API(OpenAI gpt-4o-mini). Router(의도 분석)와 Synthesizer(응답 생성)가 실제로 통신하는 언어 모델 엔드포인트입니다.',
   },
   jev_service: {
     desc: 'JEV Controller & Base Auth 프레임워크 (Cloud: https://api.typesafe.ai | Local: http://localhost:8000). Proxmox VE 8.2 가상화 인프라와 안전하게 통신합니다.',
@@ -104,18 +104,18 @@ const fixedNodes: CanvasNode[] = [
   },
   {
     id: 'router',
-    name: 'Router Node',
-    sub: 'LLM 의도 분류 & 도구 결정',
+    name: '🤖 LLM 의도 분석',
+    sub: 'Router (도구 파라미터 추론)',
     type: 'router',
-    x: 200,
+    x: 195,
     y: 92,
-    w: 180,
+    w: 190,
     h: 56,
     description: nodeDetails.router.desc,
   },
   {
     id: 'safety_check',
-    name: 'Safety Gate',
+    name: '⚡ JEV Safety Gate',
     sub: '파괴적 고위험 검증 (HITL)',
     type: 'safety',
     x: 160,
@@ -126,7 +126,7 @@ const fixedNodes: CanvasNode[] = [
   },
   {
     id: 'tool_executor',
-    name: 'Tool Executor',
+    name: '⚡ JEV Tool Executor',
     sub: 'Proxmox MCP API 실행',
     type: 'tool',
     x: 160,
@@ -137,12 +137,12 @@ const fixedNodes: CanvasNode[] = [
   },
   {
     id: 'synthesizer',
-    name: 'Synthesizer',
-    sub: '결과 종합 & 응답 생성',
+    name: '🤖 LLM 응답 생성',
+    sub: 'Synthesizer (결과 요약 및 답변)',
     type: 'synth',
-    x: 200,
+    x: 195,
     y: 405,
-    w: 180,
+    w: 190,
     h: 56,
     description: nodeDetails.synthesizer.desc,
   },
@@ -161,26 +161,26 @@ const fixedNodes: CanvasNode[] = [
   // 2. Separate External Service Nodes (Sidecars)
   {
     id: 'jev_service',
-    name: 'JEV Controller',
-    sub: '거버넌스 & 인프라 오케스트레이터',
+    name: '⚡ JEV Controller',
+    sub: '거버넌스 & 인프라 제어',
     type: 'jev_service',
-    x: 16,
+    x: 14,
     y: 55,
-    w: 154,
+    w: 156,
     h: 68,
     description: 'JEV Controller & Base Auth 프레임워크. 사용자 요청을 최초 접수하여 거버넌스 정책을 바인딩하고 Proxmox VE 인프라를 안전하게 제어합니다.',
     isExternal: true,
   },
   {
     id: 'llm_service',
-    name: 'LLM Engine',
-    sub: 'OpenAI / Claude',
+    name: '🌐 Cloud LLM API',
+    sub: 'OpenAI (gpt-4o-mini)',
     type: 'llm_service',
-    x: 415,
+    x: 412,
     y: 88,
-    w: 145,
+    w: 150,
     h: 64,
-    description: nodeDetails.llm_service.desc,
+    description: '외부 대형 언어 모델 클라우드 API(OpenAI gpt-4o-mini). Router(의도 분석)와 Synthesizer(응답 생성) 단계에서 실제 언어 추론을 수행하는 백엔드 엔진입니다.',
     isExternal: true,
   },
 ];
@@ -261,7 +261,7 @@ const fixedEdges: CanvasEdge[] = [
     id: 'e-router-llm',
     from: 'router',
     to: 'llm_service',
-    label: '추론 요청',
+    label: '의도 분석 API',
     color: '#38bdf8',
     dashed: true,
     isExternalBus: true,
@@ -270,7 +270,7 @@ const fixedEdges: CanvasEdge[] = [
     id: 'e-synth-llm',
     from: 'synthesizer',
     to: 'llm_service',
-    label: '답변 합성',
+    label: '응답 생성 API',
     color: '#34d399',
     dashed: true,
     isExternalBus: true,
@@ -279,7 +279,7 @@ const fixedEdges: CanvasEdge[] = [
     id: 'e-jev-tool',
     from: 'tool_executor',
     to: 'jev_service',
-    label: 'Proxmox 제어',
+    label: 'Proxmox 제어 RPC',
     color: '#c084fc',
     dashed: true,
     isExternalBus: true,
@@ -890,10 +890,14 @@ export function LangGraphCanvas({
           ctx.font = 'bold 8.5px monospace';
           ctx.fillStyle = '#7dd3fc';
           ctx.fillText(`intent: ${exec.intent}`, node.x + 24, node.y + 39);
+        } else if (node.id === 'synthesizer' && (isActive || isVisited)) {
+          ctx.font = 'bold 8.5px monospace';
+          ctx.fillStyle = '#6ee7b7';
+          ctx.fillText(isActive ? '⚡ 한국어 답변 합성 중' : '✓ 응답 합성 완료', node.x + 24, node.y + 39);
         } else if (node.isExternal) {
           ctx.font = '8.5px monospace';
           ctx.fillStyle = isExternalActive ? accentColor : '#64748b';
-          const label = node.id === 'llm_service' ? 'EXTERNAL LLM' : 'PROXMOX API';
+          const label = node.id === 'llm_service' ? 'CLOUD API' : 'PROXMOX API';
           ctx.fillText(label, node.x + 24, node.y + 42);
         }
 
