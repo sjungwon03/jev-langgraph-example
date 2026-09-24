@@ -113,6 +113,12 @@ export async function fetchClusterSummary(): Promise<ClusterSummary> {
   return res.json();
 }
 
+export async function fetchNodes(): Promise<ProxmoxNode[]> {
+  const res = await fetch(`${API_BASE}/api/infra/nodes`);
+  if (!res.ok) throw new Error('Failed to fetch nodes');
+  return res.json();
+}
+
 export async function executeVmAction(
   node: string,
   vmid: number,

@@ -22,7 +22,7 @@ interface CreateVmModalProps {
 }
 
 export function CreateVmModal({ isOpen, onClose, onSuccess, nodes }: CreateVmModalProps) {
-  const [node, setNode] = useState(nodes[0]?.node || 'pve-node-01');
+  const [node, setNode] = useState(nodes[0]?.node || 'pve');
   const [vmid, setVmid] = useState(Math.floor(106 + Math.random() * 50));
   const [name, setName] = useState('');
   const [type, setType] = useState<'qemu' | 'lxc'>('qemu');

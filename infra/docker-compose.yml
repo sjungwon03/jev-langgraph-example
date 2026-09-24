@@ -43,7 +43,8 @@ services:
       - PROXMOX_BASE_URL=${PROXMOX_BASE_URL:-https://pve.example.com:8006}
       - PROXMOX_TOKEN_ID=${PROXMOX_TOKEN_ID:-root@pam!token}
       - PROXMOX_TOKEN_SECRET=${PROXMOX_TOKEN_SECRET:-dev_token_secret}
-      - PROXMOX_MOCK_MODE=${PROXMOX_MOCK_MODE:-true}
+      - PROXMOX_MOCK_MODE=${PROXMOX_MOCK_MODE:-false}
+      - PROXMOX_REJECT_UNAUTHORIZED=${PROXMOX_REJECT_UNAUTHORIZED:-false}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - RABBITMQ_URI=amqp://${RABBITMQ_USER:-dev_user}:${RABBITMQ_PASS:-dev_pass}@rabbitmq:5672

@@ -40,21 +40,27 @@ export class InfraService {
     return this.mcpClient.callTool('list_storage', { node });
   }
 
-  async getTasks(node: string = 'pve-node-01') {
-    return this.mcpClient.callTool('list_tasks', { node });
+  async getTasks(node?: string) {
+    return this.mcpClient.callTool('list_tasks', node ? { node } : {});
   }
 
   async getNetworks(node?: string) {
-    return this.mcpClient.callTool('list_networks', { node });
+    return this.mcpClient.callTool('list_networks', node ? { node } : {});
   }
 
   async getTopology() {
-    const nodes = await this.mcpClient.callTool('list_nodes');
-    const vms = await this.mcpClient.callTool('cluster_resources', { type: 'vm' });
-    const storage = await this.mcpClient.callTool('cluster_resources', { type: 'storage' });
-    const networks = await this.mcpClient.callTool('list_networks', {});
+    const rawNodes = await this.mcpClient.callTool('list_nodes').catch(() => []);
+    const rawVms = await this.mcpClient.callTool('cluster_resources', { type: 'vm' }).catch(() => []);
+    const rawStorage = await this.mcpClient.callTool('cluster_resources', { type: 'storage' }).catch(() => []);
+    const rawNetworks = await this.mcpClient.callTool('list_networks', {}).catch(() => []);
+
+    const nodes = Array.isArray(rawNodes) ? rawNodes : [];
+    const vms = Array.isArray(rawVms) ? rawVms : [];
+    const storage = Array.isArray(rawStorage) ? rawStorage : [];
+    const networks = Array.isArray(rawNetworks) ? rawNetworks : [];
+
     return {
-      datacenter: 'Proxmox-DC-Seoul',
+      datacenter: 'Proxmox VE Cluster',
       nodes: nodes.map((n: any) => ({
         ...n,
         vms: vms.filter((v: any) => v.node === n.node),

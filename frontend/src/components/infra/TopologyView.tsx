@@ -23,10 +23,7 @@ interface TopologyViewProps {
 }
 
 export function TopologyView({ topology, onSelectVm }: TopologyViewProps) {
-  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({
-    'pve-node-01': true,
-    'pve-node-02': true,
-  });
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
   if (!topology) {
     return (

@@ -36,8 +36,10 @@ import {
   fetchResourceRequestStats,
   createResourceRequest,
   reviewResourceRequest,
+  fetchNodes,
   ResourceRequest,
   ResourceRequestStats,
+  ProxmoxNode,
 } from '@/lib/api';
 import { useUserRole } from '@/lib/role-context';
 
@@ -70,18 +72,24 @@ export default function ResourceRequestsPage() {
   const [reviewTarget, setReviewTarget] = useState<ResourceRequest | null>(null);
   const [reviewDecision, setReviewDecision] = useState<'APPROVE' | 'REJECT'>('APPROVE');
   const [reviewComment, setReviewComment] = useState('');
-  const [targetNode, setTargetNode] = useState('pve-node-01');
+  const [targetNode, setTargetNode] = useState('');
+  const [availableNodes, setAvailableNodes] = useState<ProxmoxNode[]>([]);
   const [reviewing, setReviewing] = useState(false);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [reqList, statsData] = await Promise.all([
+      const [reqList, statsData, nodesData] = await Promise.all([
         fetchResourceRequests(),
         fetchResourceRequestStats(),
+        fetchNodes().catch(() => []),
       ]);
       setRequests(reqList);
       setStats(statsData);
+      setAvailableNodes(nodesData || []);
+      if (!targetNode && nodesData && nodesData.length > 0) {
+        setTargetNode(nodesData[0].node);
+      }
     } catch (err) {
       console.error('Failed to load resource requests:', err);
     } finally {
@@ -663,8 +671,18 @@ export default function ResourceRequestsPage() {
                   onChange={(e) => setTargetNode(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-md p-2 text-xs text-slate-200"
                 >
-                  <option value="pve-node-01">pve-node-01 (여유 RAM: 13.8 GB)</option>
-                  <option value="pve-node-02">pve-node-02 (여유 RAM: 3.5 GB)</option>
+                  {availableNodes.length > 0 ? (
+                    availableNodes.map((n) => {
+                      const freeRamGb = Math.max(0, ((n.maxmem || 0) - (n.mem || 0)) / 1024 / 1024 / 1024).toFixed(1);
+                      return (
+                        <option key={n.node} value={n.node}>
+                          {n.node} ({n.status === 'online' ? '정상' : n.status}, 여유 RAM: {freeRamGb} GB)
+                        </option>
+                      );
+                    })
+                  ) : (
+                    <option value="pve">기본 노드 (pve)</option>
+                  )}
                 </select>
               </div>
             )}

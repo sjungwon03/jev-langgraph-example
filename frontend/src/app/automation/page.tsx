@@ -52,64 +52,11 @@ export default function AutomationPage() {
     try {
       setLoading(true);
       const [r, l] = await Promise.all([
-        fetchAutomationRules().catch(() => [
-          {
-            id: 'rule-001',
-            name: '노드 메모리 임계치 감시 및 경고',
-            description: '클러스터 노드의 메모리 사용률이 85%를 초과할 경우 알림 발행',
-            triggerType: 'RESOURCE_THRESHOLD',
-            thresholdMetric: 'mem' as const,
-            thresholdValue: 85,
-            actionType: 'ALERT',
-            enabled: true,
-            triggerCount: 3,
-            lastTriggeredAt: new Date(Date.now() - 300000).toISOString(),
-          },
-          {
-            id: 'rule-002',
-            name: '중요 서비스 자율 복구 (Auto-Heal)',
-            description: 'web-gateway-prod(100) 또는 app-api-worker(101) VM 다운 시 자동 재기동',
-            triggerType: 'VM_STATUS_CHANGE',
-            actionType: 'AUTO_HEAL_RESTART',
-            enabled: true,
-            triggerCount: 1,
-            lastTriggeredAt: new Date(Date.now() - 3600000).toISOString(),
-          },
-        ] as AutomationRule[]),
-        fetchAuditLogs().catch(() => [
-          {
-            id: 'aud-001',
-            timestamp: new Date().toISOString(),
-            actor: 'ai-agent',
-            action: 'qemu_start',
-            targetKind: 'ai-decision',
-            targetId: '101',
-            status: 'SUCCESS',
-            details: {
-              prompt: '101번 VM 기동해줘',
-              intent: 'vm_start',
-              tool: 'qemu_start',
-              args: { node: 'pve-node-01', vmid: 101 },
-              why: '사용자 입력 "101번 VM 기동해줘"에서 인스턴스 전원 기동 의도 및 대상 VMID 101을 감지하여 qemu_start 도구를 호출하도록 결정했습니다.',
-              safetyEvaluation: 'SAFE - 인스턴스 정상 가동 작업으로 즉시 실행 허용되었습니다.',
-              latencyMs: 14,
-              upid: 'UPID:pve-node-01:00001001:00000000:1718000000:qmstart:101:root@pam:',
-            },
-          },
-          {
-            id: 'aud-002',
-            timestamp: new Date(Date.now() - 600000).toISOString(),
-            actor: 'automation-engine',
-            action: 'threshold_alert',
-            targetKind: 'node',
-            targetId: 'pve-node-02',
-            status: 'SUCCESS',
-            details: { value: '88.5%', metric: 'mem' },
-          },
-        ] as AuditLog[]),
+        fetchAutomationRules().catch(() => [] as AutomationRule[]),
+        fetchAuditLogs().catch(() => [] as AuditLog[]),
       ]);
-      setRules(r);
-      setLogs(l);
+      setRules(r || []);
+      setLogs(l || []);
     } finally {
       setLoading(false);
     }
