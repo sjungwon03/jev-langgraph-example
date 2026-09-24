@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Network, MessageSquare, Zap, ShieldCheck, Server, ClipboardCheck } from 'lucide-react';
+import { LayoutDashboard, Network, MessageSquare, Zap, ShieldCheck, Server, ClipboardCheck, GitFork } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUserRole } from '@/lib/role-context';
 
@@ -24,6 +24,12 @@ export function Sidebar() {
         },
         { href: '/chat', label: '인프라 제어 콘솔', icon: MessageSquare },
         {
+          href: '/graph',
+          label: 'LangGraph 워크플로우',
+          icon: GitFork,
+          badge: 'StateGraph',
+        },
+        {
           href: '/automation',
           label: '자동화 및 감사 거버넌스',
           icon: Zap,
@@ -39,6 +45,12 @@ export function Sidebar() {
           badge: '신청',
         },
         { href: '/chat', label: 'AI 질의 및 어시스턴트', icon: MessageSquare },
+        {
+          href: '/graph',
+          label: 'LangGraph 워크플로우',
+          icon: GitFork,
+          badge: 'StateGraph',
+        },
         {
           href: '/infra',
           label: '클러스터 아키텍처 조회',

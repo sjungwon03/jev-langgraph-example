@@ -613,6 +613,96 @@ ${toolInfo}`;
   }
 
   /**
+   * Return the LangGraph StateGraph topology, Mermaid definition, and metadata for UI rendering.
+   */
+  getGraphDefinition() {
+    let mermaid = '';
+    try {
+      if (this.appGraph?.getGraph) {
+        mermaid = this.appGraph.getGraph().drawMermaid();
+      }
+    } catch (err: any) {
+      this.logger.warn(`Could not drawMermaid from appGraph: ${err.message}`);
+    }
+
+    if (!mermaid) {
+      mermaid = `graph TD
+  __start__(__start__):::start --> router[Router Node (LLM 의도 분석)]
+  router -->|도구 실행 필요| safety_check{Safety Gate (보안 가드레일)}
+  router -->|일반 질문/대화| synthesizer[Synthesizer Node (응답 생성)]
+  safety_check -->|파괴적 작업 감지| synthesizer
+  safety_check -->|안전 작업 승인| tool_executor[Tool Executor (Proxmox 실행)]
+  tool_executor --> synthesizer
+  synthesizer --> __end__(__end__):::end
+  classDef start fill:#10b981,stroke:#059669,color:#fff;
+  classDef end fill:#6366f1,stroke:#4f46e5,color:#fff;`;
+    }
+
+    return {
+      mermaid,
+      nodes: [
+        {
+          id: '__start__',
+          name: 'Start Node',
+          label: '입력 수신 (__start__)',
+          description: '사용자 자연어 프롬프트, 역할(DEV_TEAM/INFRA_TEAM), 신청자 정보 수신 및 세션 상태 초기화',
+          type: 'start' as const,
+          stateChanges: ['messages', 'role', 'requesterName'],
+        },
+        {
+          id: 'router',
+          name: 'Router Node (LLM Brain)',
+          label: 'Router (의도 분석 & 도구 바인딩)',
+          description: 'LLM 추론을 거쳐 사용자 의도(intent)를 분류하고 Proxmox MCP 도구 및 인수를 정확하게 도출',
+          type: 'router' as const,
+          stateChanges: ['intent', 'toolToCall', 'decisionWhy', 'safetyEvaluation'],
+        },
+        {
+          id: 'safety_check',
+          name: 'Safety Check Node (Guardrails)',
+          label: 'Safety Gate (보안 가드레일)',
+          description: '삭제, 강제종료 등 파괴적 고위험 작업 감지 시 작업을 일시 중단하고 Human-in-the-Loop 승인 토큰 생성',
+          type: 'safety' as const,
+          stateChanges: ['confirmationNeeded'],
+        },
+        {
+          id: 'tool_executor',
+          name: 'Tool Executor Node (Proxmox MCP)',
+          label: 'Tool Executor (Proxmox 실행)',
+          description: 'Proxmox 가상화 인프라 API 또는 개발팀 자원 신청/승인 티켓 원격 실행',
+          type: 'tool' as const,
+          stateChanges: ['toolResult'],
+        },
+        {
+          id: 'synthesizer',
+          name: 'Synthesizer Node (Dialogue)',
+          label: 'Synthesizer (대화 요약 & 응답)',
+          description: '도구 실행 결과 및 인프라 상태를 바탕으로 LLM을 통해 정돈된 한국어 마크다운 응답 작성',
+          type: 'synth' as const,
+          stateChanges: ['finalResponse'],
+        },
+        {
+          id: '__end__',
+          name: 'End Node',
+          label: '종료 (__end__)',
+          description: 'SSE 실시간 스트리밍 완료 처리 및 실행 내역 감사 로그(Audit) 영구 보관',
+          type: 'end' as const,
+          stateChanges: [],
+        },
+      ],
+      edges: [
+        { from: '__start__', to: 'router', label: '사용자 발화 주입' },
+        { from: 'router', to: 'safety_check', label: '도구 호출 필요', condition: 'toolToCall != null' },
+        { from: 'router', to: 'synthesizer', label: '일반 질문 / 대화', condition: 'toolToCall == null' },
+        { from: 'safety_check', to: 'synthesizer', label: '고위험 승인 대기', condition: 'confirmationNeeded != null' },
+        { from: 'safety_check', to: 'tool_executor', label: '안전 작업 승인 통과', condition: 'confirmationNeeded == null' },
+        { from: 'tool_executor', to: 'synthesizer', label: '실행 결과 전달' },
+        { from: 'synthesizer', to: '__end__', label: '최종 스트리밍 완료' },
+      ],
+    };
+  }
+
+  /**
    * Get the active JEV Authentication configuration (Base Auth or Bearer)
    */
   getAuthConfig(): JevAuthConfig {

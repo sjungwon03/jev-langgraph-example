@@ -26,4 +26,10 @@ export class ChatController {
   getHistory(@Param('threadId') threadId: string) {
     return this.chatService.getHistory(threadId);
   }
+
+  @Get('graph')
+  @ApiOperation({ summary: 'Get LangGraph StateGraph topology and Mermaid definition' })
+  getGraph() {
+    return this.chatService.getGraph();
+  }
 }

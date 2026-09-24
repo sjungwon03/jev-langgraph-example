@@ -31,6 +31,10 @@ export class ChatService {
     return { threadId, messages };
   }
 
+  getGraph() {
+    return this.agentService.getGraphDefinition();
+  }
+
   async streamChat(dto: ChatMessageInputDto, res: Response) {
     const threadId = dto.threadId || 'main-thread';
     const userMessage: StoredMessage = {

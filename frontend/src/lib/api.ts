@@ -441,4 +441,32 @@ export async function logoutUser(token: string): Promise<void> {
   }).catch(() => {});
 }
 
+export interface LangGraphNode {
+  id: string;
+  name: string;
+  label: string;
+  description: string;
+  type: 'start' | 'router' | 'safety' | 'tool' | 'synth' | 'end';
+  stateChanges: string[];
+}
+
+export interface LangGraphEdge {
+  from: string;
+  to: string;
+  label?: string;
+  condition?: string;
+}
+
+export interface LangGraphDefinition {
+  mermaid: string;
+  nodes: LangGraphNode[];
+  edges: LangGraphEdge[];
+}
+
+export async function fetchLangGraphDefinition(): Promise<LangGraphDefinition> {
+  const res = await fetch(`${API_BASE}/api/chat/graph`);
+  return safeJson<LangGraphDefinition>(res, 'LangGraph 워크플로우 정보를 불러오지 못했습니다.');
+}
+
+
 
