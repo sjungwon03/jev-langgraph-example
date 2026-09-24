@@ -297,7 +297,7 @@ export function ChatConsole() {
         {/* Left: Chat Container */}
         <div
           className={`flex flex-col h-full overflow-hidden transition-all duration-300 ${
-            showLiveGraph ? 'w-full lg:w-3/5 border-r border-slate-800/80' : 'w-full'
+            showLiveGraph ? 'flex-1 min-w-[320px] border-r border-slate-800/80' : 'w-full'
           }`}
         >
           {/* Messages area */}
@@ -480,7 +480,7 @@ export function ChatConsole() {
 
         {/* Right: Live LangGraph Canvas Panel */}
         {showLiveGraph && (
-          <div className="hidden lg:flex lg:w-2/5 flex-col h-full overflow-hidden bg-[#050811] shrink-0">
+          <div className="flex w-[42%] min-w-[340px] max-w-[560px] flex-col h-full overflow-hidden bg-[#050811] shrink-0">
             <div className="p-3 border-b border-slate-800/80 bg-slate-950/90 flex items-center justify-between text-xs shrink-0">
               <div className="flex items-center gap-2">
                 <GitFork className="w-4 h-4 text-blue-400" />
