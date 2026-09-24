@@ -122,7 +122,7 @@ export function VmDetailModal({
             <div
               className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                 isRunning
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  ? 'bg-slate-800 text-slate-200 border border-slate-700'
                   : 'bg-slate-800 text-slate-400 border border-slate-700'
               }`}
             >
@@ -131,10 +131,10 @@ export function VmDetailModal({
             <div>
               <div className="flex items-center gap-2">
                 <DialogTitle className="text-lg text-slate-100">{vm.name}</DialogTitle>
-                <Badge variant="outline" className="font-mono text-emerald-400 border-slate-700">
+                <Badge variant="outline" className="font-mono text-slate-200 border-slate-700">
                   ID: {vm.vmid}
                 </Badge>
-                <Badge variant="secondary" className="font-mono uppercase text-cyan-300">
+                <Badge variant="secondary" className="font-mono uppercase text-slate-300">
                   {vm.type}
                 </Badge>
               </div>
@@ -143,8 +143,8 @@ export function VmDetailModal({
                 <span>•</span>
                 <span className="flex items-center gap-1 font-mono">
                   <span
-                    className={`w-2 h-2 rounded-full ${
-                      isRunning ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isRunning ? 'bg-emerald-400' : 'bg-slate-500'
                     }`}
                   />
                   {vm.status.toUpperCase()}
@@ -215,13 +215,13 @@ export function VmDetailModal({
           <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400 flex items-center gap-1.5 font-medium">
-                <MemoryStick className="w-3.5 h-3.5 text-emerald-400" /> RAM
+                <MemoryStick className="w-3.5 h-3.5 text-slate-400" /> RAM
               </span>
-              <span className="font-mono text-emerald-400 font-bold">{memUsagePercent}%</span>
+              <span className="font-mono text-slate-200 font-bold">{memUsagePercent}%</span>
             </div>
             <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700/50">
               <div
-                className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500"
+                className="bg-slate-300 h-full rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(memUsagePercent, 100)}%` }}
               />
             </div>
@@ -234,13 +234,13 @@ export function VmDetailModal({
           <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400 flex items-center gap-1.5 font-medium">
-                <HardDrive className="w-3.5 h-3.5 text-amber-400" /> 가상 디스크
+                <HardDrive className="w-3.5 h-3.5 text-slate-400" /> 가상 디스크
               </span>
-              <span className="font-mono text-amber-400 font-bold">{diskUsagePercent}%</span>
+              <span className="font-mono text-slate-200 font-bold">{diskUsagePercent}%</span>
             </div>
             <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700/50">
               <div
-                className="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full transition-all duration-500"
+                className="bg-slate-300 h-full rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(diskUsagePercent, 100)}%` }}
               />
             </div>

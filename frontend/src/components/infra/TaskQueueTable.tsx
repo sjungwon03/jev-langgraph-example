@@ -31,17 +31,17 @@ export function TaskQueueTable({ tasks }: TaskQueueTableProps) {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-emerald-400" />
+            <Terminal className="w-4 h-4 text-slate-400" />
             <span>클러스터 비동기 작업 큐 & UPID 이력</span>
           </h3>
           <p className="text-xs text-slate-400">
-            Proxmox VE 백엔드 작업 워커(pvedaemon / pveproxy)가 처리한 모든 비동기 태스크 실행 영수증
+            Proxmox VE 백엔드 작업 워커가 처리한 비동기 태스크 실행 영수증
           </p>
         </div>
         <span className="text-xs font-mono text-slate-400">최근 {tasks.length}개 작업</span>
       </div>
 
-      <div className="glow-card rounded-xl overflow-hidden border border-slate-800">
+      <div className="rounded-xl overflow-hidden border border-slate-800/80 bg-slate-900/50">
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-900/60 text-slate-400 border-b border-slate-800 uppercase font-mono text-[11px]">
             <tr>
@@ -56,7 +56,7 @@ export function TaskQueueTable({ tasks }: TaskQueueTableProps) {
           </thead>
           <tbody className="divide-y divide-slate-800/50 text-slate-300">
             {tasks.map((task) => (
-              <tr key={task.upid} className="hover:bg-slate-900/30 transition-colors">
+              <tr key={task.upid} className="hover:bg-slate-800/30 transition-colors">
                 <td className="py-3.5 px-4">
                   <span
                     className={`px-2 py-0.5 rounded text-[11px] font-mono border ${getActionBadgeColor(
@@ -66,7 +66,7 @@ export function TaskQueueTable({ tasks }: TaskQueueTableProps) {
                     {task.type.toUpperCase()}
                   </span>
                 </td>
-                <td className="py-3.5 px-4 font-mono font-medium text-emerald-400">
+                <td className="py-3.5 px-4 font-mono font-medium text-slate-200">
                   {task.id || '-'}
                 </td>
                 <td className="py-3.5 px-4 font-mono text-slate-300">{task.node}</td>
@@ -75,7 +75,7 @@ export function TaskQueueTable({ tasks }: TaskQueueTableProps) {
                   <span>{task.user}</span>
                 </td>
                 <td className="py-3.5 px-4">
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-emerald-950/30 text-emerald-300 border border-emerald-800/40">
                     <CheckCircle2 className="w-3 h-3" />
                     {task.status}
                   </span>

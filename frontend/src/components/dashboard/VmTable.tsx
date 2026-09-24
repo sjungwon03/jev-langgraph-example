@@ -77,10 +77,10 @@ export function VmTable({ vms, onActionComplete }: VmTableProps) {
   };
 
   return (
-    <Card className="glow-card border-slate-800 bg-slate-900/70 overflow-hidden">
+    <Card className="border border-slate-800/80 bg-slate-900/50 overflow-hidden">
       {/* Action Notification Banner */}
       {actionMessage && (
-        <div className="bg-emerald-500/10 border-b border-emerald-500/30 px-5 py-2 text-xs text-emerald-300 flex items-center justify-between">
+        <div className="bg-slate-800/80 border-b border-slate-700/80 px-5 py-2 text-xs text-slate-200 flex items-center justify-between">
           <span className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {actionMessage}
           </span>
@@ -158,51 +158,53 @@ export function VmTable({ vms, onActionComplete }: VmTableProps) {
 
               return (
                 <TableRow key={vm.vmid} className="hover:bg-slate-800/40 border-slate-800/50">
-                  <TableCell className="py-3.5 px-4 font-mono font-medium text-emerald-400">
+                  <TableCell className="py-3.5 px-4 font-mono font-medium text-slate-200">
                     {vm.vmid}
                   </TableCell>
                   <TableCell
                     onClick={() => setSelectedDetailVm(vm)}
-                    className="py-3.5 px-4 font-medium text-slate-100 hover:text-emerald-400 cursor-pointer transition-colors"
+                    className="py-3.5 px-4 font-medium text-slate-100 hover:text-white cursor-pointer transition-colors"
                     title="클릭하여 상세 하드웨어 사양 및 모니터링 조회"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>{vm.name}</span>
-                      <Info className="w-3 h-3 text-slate-500 hover:text-emerald-400" />
+                      <Info className="w-3 h-3 text-slate-500 hover:text-slate-300" />
                     </div>
                   </TableCell>
                   <TableCell className="py-3.5 px-4 font-mono text-slate-400">
-                    <Badge variant="outline" className="bg-slate-800/80 border-slate-700 text-[10px] py-0 px-1.5 font-mono">
+                    <Badge variant="outline" className="bg-slate-800/80 border-slate-700/80 text-[10px] py-0 px-1.5 font-mono text-slate-300">
                       {vm.type.toUpperCase()}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-3.5 px-4 text-slate-300 font-mono">{vm.node}</TableCell>
                   <TableCell className="py-3.5 px-4">
                     <Badge
-                      variant={isRunning ? 'success' : 'outline'}
+                      variant="outline"
                       className={`inline-flex items-center gap-1.5 text-[10px] font-mono py-0.5 px-2 ${
-                        !isRunning ? 'bg-slate-800/60 text-slate-400 border-slate-700' : ''
+                        isRunning
+                          ? 'bg-emerald-950/30 text-emerald-300 border-emerald-800/40'
+                          : 'bg-slate-800/60 text-slate-400 border-slate-700/60'
                       }`}
                     >
                       <span
                         className={`w-1.5 h-1.5 rounded-full ${
-                          isRunning ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+                          isRunning ? 'bg-emerald-400' : 'bg-slate-500'
                         }`}
                       />
                       {vm.status.toUpperCase()}
                     </Badge>
                   </TableCell>
-                  <TableCell className="py-3.5 px-4 font-mono">{vm.cpus || 2} Cores</TableCell>
+                  <TableCell className="py-3.5 px-4 font-mono text-slate-300">{vm.cpus || 2} Cores</TableCell>
                   <TableCell className="py-3.5 px-4 font-mono text-slate-300">{memAllocatedGB} GB</TableCell>
                   <TableCell className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
+                    <div className="flex items-center justify-end gap-1">
                       {!isRunning ? (
                         <Button
                           variant="outline"
                           size="icon"
                           disabled={isLoading}
                           onClick={() => handleAction(vm.node, vm.vmid, 'start')}
-                          className="h-7 w-7 rounded-md bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border-emerald-500/30"
+                          className="h-7 w-7 rounded bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border-slate-700"
                           title="기동 (Start)"
                         >
                           <Play className="w-3 h-3 fill-current" />
@@ -214,7 +216,7 @@ export function VmTable({ vms, onActionComplete }: VmTableProps) {
                             size="icon"
                             disabled={isLoading}
                             onClick={() => handleAction(vm.node, vm.vmid, 'stop')}
-                            className="h-7 w-7 rounded-md bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border-amber-500/30"
+                            className="h-7 w-7 rounded bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border-slate-700"
                             title="정상 종료 (Shutdown)"
                           >
                             <Square className="w-3 h-3 fill-current" />
@@ -224,7 +226,7 @@ export function VmTable({ vms, onActionComplete }: VmTableProps) {
                             size="icon"
                             disabled={isLoading}
                             onClick={() => handleAction(vm.node, vm.vmid, 'reboot')}
-                            className="h-7 w-7 rounded-md bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border-cyan-500/30"
+                            className="h-7 w-7 rounded bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border-slate-700"
                             title="재부팅 (Reboot)"
                           >
                             <RotateCw className="w-3 h-3" />
@@ -234,7 +236,7 @@ export function VmTable({ vms, onActionComplete }: VmTableProps) {
                             size="icon"
                             disabled={isLoading}
                             onClick={() => handleAction(vm.node, vm.vmid, 'force_stop')}
-                            className="h-7 w-7 rounded-md bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border-rose-500/30"
+                            className="h-7 w-7 rounded bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-rose-400 border-slate-700"
                             title="강제 종료 (Force Stop)"
                           >
                             <PowerOff className="w-3 h-3" />
@@ -247,7 +249,7 @@ export function VmTable({ vms, onActionComplete }: VmTableProps) {
                         size="icon"
                         disabled={isLoading}
                         onClick={() => setSelectedSnapshotVm(vm)}
-                        className="h-7 w-7 rounded-md bg-slate-800 text-cyan-400 hover:bg-cyan-500/20 border-slate-700 hover:border-cyan-500/40"
+                        className="h-7 w-7 rounded bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border-slate-700"
                         title="스냅샷 관리"
                       >
                         <Camera className="w-3 h-3" />
@@ -257,7 +259,7 @@ export function VmTable({ vms, onActionComplete }: VmTableProps) {
                         size="icon"
                         disabled={isLoading}
                         onClick={() => setSelectedResizeVm(vm)}
-                        className="h-7 w-7 rounded-md bg-slate-800 text-amber-400 hover:bg-amber-500/20 border-slate-700 hover:border-amber-500/40"
+                        className="h-7 w-7 rounded bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border-slate-700"
                         title="디스크 용량 증설"
                       >
                         <HardDrive className="w-3 h-3" />
@@ -267,7 +269,7 @@ export function VmTable({ vms, onActionComplete }: VmTableProps) {
                         size="icon"
                         disabled={isLoading}
                         onClick={() => handleAction(vm.node, vm.vmid, 'delete')}
-                        className="h-7 w-7 rounded-md bg-slate-800 text-slate-400 hover:text-rose-400 hover:bg-slate-700 border-slate-700"
+                        className="h-7 w-7 rounded bg-slate-800 text-slate-400 hover:text-rose-400 hover:bg-slate-700 border-slate-700"
                         title="삭제 (Delete)"
                       >
                         <Trash2 className="w-3 h-3" />

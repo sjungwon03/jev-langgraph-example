@@ -186,7 +186,7 @@ export default function DashboardPage() {
             <Button
               onClick={() => setIsCreateModalOpen(true)}
               size="sm"
-              className="flex items-center gap-1.5 text-xs font-semibold shadow-lg shadow-emerald-500/20"
+              className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700"
             >
               <Plus className="w-4 h-4" />
               <span>새 인스턴스 배포</span>

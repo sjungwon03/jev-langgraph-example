@@ -54,7 +54,7 @@ export function ResizeDiskModal({ vm, isOpen, onClose, onSuccess }: ResizeDiskMo
       <DialogContent className="max-w-md border-slate-800 bg-slate-900/95">
         <DialogHeader className="pb-2 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 border border-slate-700/60 flex items-center justify-center">
               <HardDrive className="w-4 h-4" />
             </div>
             <div>

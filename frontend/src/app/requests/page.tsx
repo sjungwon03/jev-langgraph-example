@@ -198,7 +198,7 @@ export default function ResourceRequestsPage() {
           {role === 'DEV_TEAM' && (
             <Button
               onClick={() => setIsCreateModalOpen(true)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium gap-2 shadow-lg shadow-emerald-950/40 shrink-0"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 font-medium gap-2 shrink-0"
             >
               <PlusCircle className="w-4 h-4" />
               신규 자원 요청서 작성
@@ -208,36 +208,36 @@ export default function ResourceRequestsPage() {
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80 flex items-center justify-between">
             <div>
               <div className="text-xs text-slate-400">전체 요청 건수</div>
-              <div className="text-2xl font-bold font-mono text-white mt-1">{stats.total}</div>
+              <div className="text-2xl font-bold font-mono text-slate-100 mt-1">{stats.total}</div>
             </div>
-            <Server className="w-8 h-8 text-slate-600" />
+            <Server className="w-6 h-6 text-slate-600" />
           </div>
 
-          <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-800/30 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80 flex items-center justify-between">
             <div>
-              <div className="text-xs text-amber-300">승인 심사 대기</div>
+              <div className="text-xs text-slate-400">승인 심사 대기</div>
               <div className="text-2xl font-bold font-mono text-amber-400 mt-1">{stats.pending}</div>
             </div>
-            <Clock className="w-8 h-8 text-amber-400 animate-pulse" />
+            <Clock className="w-6 h-6 text-amber-500/70" />
           </div>
 
-          <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-800/30 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80 flex items-center justify-between">
             <div>
-              <div className="text-xs text-emerald-300">승인 및 프로비저닝</div>
-              <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">{stats.approved}</div>
+              <div className="text-xs text-slate-400">승인 및 프로비저닝</div>
+              <div className="text-2xl font-bold font-mono text-slate-100 mt-1">{stats.approved}</div>
             </div>
-            <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+            <CheckCircle2 className="w-6 h-6 text-emerald-500/70" />
           </div>
 
-          <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-800/30 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80 flex items-center justify-between">
             <div>
-              <div className="text-xs text-rose-300">반려됨</div>
-              <div className="text-2xl font-bold font-mono text-rose-400 mt-1">{stats.rejected}</div>
+              <div className="text-xs text-slate-400">반려됨</div>
+              <div className="text-2xl font-bold font-mono text-slate-100 mt-1">{stats.rejected}</div>
             </div>
-            <XCircle className="w-8 h-8 text-rose-400" />
+            <XCircle className="w-6 h-6 text-slate-500" />
           </div>
         </div>
 
@@ -428,9 +428,9 @@ export default function ResourceRequestsPage() {
                             setReviewDecision('APPROVE');
                             setReviewComment('자원 검토 완료. 클러스터 용량 적합하여 자동 프로비저닝을 승인합니다.');
                           }}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium gap-1.5 shadow-md shadow-emerald-950/50"
+                          className="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-xs font-medium gap-1.5"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                           승인 및 프로비저닝
                         </Button>
                         <Button
@@ -441,7 +441,7 @@ export default function ResourceRequestsPage() {
                             setReviewDecision('REJECT');
                             setReviewComment('현재 클러스터 자원 정책 한도 초과로 반려합니다.');
                           }}
-                          className="border-rose-800 text-rose-400 hover:bg-rose-950/40 text-xs"
+                          className="border-slate-800 bg-slate-900 text-slate-400 hover:text-rose-400 hover:bg-slate-800 text-xs"
                         >
                           <XCircle className="w-3.5 h-3.5" />
                           반려

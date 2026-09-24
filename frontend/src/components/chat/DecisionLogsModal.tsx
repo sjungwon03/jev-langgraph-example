@@ -75,20 +75,20 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
         {/* Header */}
         <DialogHeader className="p-4 border-b border-slate-800 flex flex-row items-center justify-between bg-slate-950/60 space-y-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30">
-              <Brain className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-lg bg-slate-800 text-slate-200 flex items-center justify-center border border-slate-700">
+              <Brain className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <DialogTitle className="text-base text-slate-100">
-                  AI 툴 호출 & 판단 근거 로그 (AI Decision Trace Logs)
+                  도구 호출 및 실행 감사 로그 (Execution Audit Logs)
                 </DialogTitle>
-                <Badge variant="purple" className="text-[10px] font-mono">
-                  REASONING AUDIT
+                <Badge variant="outline" className="text-[10px] font-mono bg-slate-800 text-slate-300 border-slate-700">
+                  AUDIT
                 </Badge>
               </div>
               <DialogDescription className="text-xs text-slate-400">
-                AI 에이전트가 어떤 툴을 호출했고 왜 선택했는지(추론 및 보안 판단)에 대한 전체 의사결정 기록
+                인프라 오케스트레이션 도구 호출 및 의도 분석 판단 이력
               </DialogDescription>
             </div>
           </div>
@@ -156,13 +156,13 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
                     onClick={() => setSelectedLog(log)}
                     className={`p-3.5 cursor-pointer transition-colors space-y-1.5 ${
                       isSelected
-                        ? 'bg-purple-950/30 border-l-2 border-purple-500'
+                        ? 'bg-slate-800/80 border-l-2 border-slate-400'
                         : 'hover:bg-slate-800/40'
                     }`}
                   >
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5 font-mono">
-                        <Badge variant="purple" className="text-[10px] py-0 px-1.5 font-mono">
+                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono bg-slate-800 text-slate-300 border-slate-700">
                           {toolName}
                         </Badge>
                         {log.details?.latencyMs && (
@@ -181,7 +181,7 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
                     </div>
 
                     <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                      💡 {whyText}
+                      {whyText}
                     </p>
                   </div>
                 );
@@ -201,25 +201,25 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
                       "{selectedLog.details?.prompt || selectedLog.action}"
                     </h4>
                   </div>
-                  <Badge variant="success" className="text-[10px] font-mono">
+                  <Badge variant="outline" className="text-[10px] font-mono bg-slate-800 text-slate-300 border-slate-700">
                     {selectedLog.status}
                   </Badge>
                 </div>
 
                 {/* Section 1: Tool Selection & Why */}
-                <div className="p-3.5 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
-                    <Brain className="w-4 h-4 text-purple-400" />
-                    <span>AI 의사결정: 왜 이 도구를 선택했는가?</span>
+                <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
+                    <Brain className="w-4 h-4 text-slate-400" />
+                    <span>의도 분석 및 도구 선택 사유</span>
                   </div>
-                  <p className="text-xs text-slate-200 leading-relaxed bg-slate-900/60 p-2.5 rounded-lg border border-purple-500/20">
+                  <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
                     {selectedLog.details?.why || '도구 선택 사유가 기록되지 않았습니다.'}
                   </p>
                   <div className="flex items-center gap-4 text-[11px] font-mono text-slate-400 pt-1">
-                    <span>의도: <strong className="text-purple-300">{selectedLog.details?.intent || '-'}</strong></span>
-                    <span>도구: <strong className="text-emerald-400">{selectedLog.details?.tool || selectedLog.action}</strong></span>
+                    <span>의도: <strong className="text-slate-200">{selectedLog.details?.intent || '-'}</strong></span>
+                    <span>도구: <strong className="text-slate-200">{selectedLog.details?.tool || selectedLog.action}</strong></span>
                     {selectedLog.details?.latencyMs && (
-                      <span>추론: <strong className="text-cyan-300">{selectedLog.details.latencyMs}ms</strong></span>
+                      <span>추론: <strong className="text-slate-300">{selectedLog.details.latencyMs}ms</strong></span>
                     )}
                   </div>
                 </div>

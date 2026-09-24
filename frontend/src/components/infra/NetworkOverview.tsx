@@ -23,7 +23,7 @@ export function NetworkOverview({ networks }: NetworkOverviewProps) {
         <span className="text-xs font-mono text-slate-400">총 {networks.length}개 인터페이스</span>
       </div>
 
-      <div className="glow-card rounded-xl overflow-hidden border border-slate-800">
+      <div className="rounded-xl overflow-hidden border border-slate-800/80 bg-slate-900/50">
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-900/60 text-slate-400 border-b border-slate-800 uppercase font-mono text-[11px]">
             <tr>
@@ -41,22 +41,22 @@ export function NetworkOverview({ networks }: NetworkOverviewProps) {
             {networks.map((net, idx) => {
               const isActive = net.active === 1;
               return (
-                <tr key={`${net.node}-${net.iface}-${idx}`} className="hover:bg-slate-900/30 transition-colors">
-                  <td className="py-3.5 px-4 font-mono font-medium text-cyan-400 flex items-center gap-1.5">
-                    <Network className="w-3.5 h-3.5 text-cyan-400/80" />
+                <tr key={`${net.node}-${net.iface}-${idx}`} className="hover:bg-slate-800/30 transition-colors">
+                  <td className="py-3.5 px-4 font-mono font-medium text-slate-200 flex items-center gap-1.5">
+                    <Network className="w-3.5 h-3.5 text-slate-400" />
                     <span>{net.iface}</span>
                   </td>
                   <td className="py-3.5 px-4 font-mono text-slate-300">{net.node}</td>
                   <td className="py-3.5 px-4 font-mono text-slate-400">
-                    <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] uppercase">
+                    <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] uppercase text-slate-300">
                       {net.type}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 font-mono text-emerald-300">{net.cidr || '-'}</td>
+                  <td className="py-3.5 px-4 font-mono text-slate-300">{net.cidr || '-'}</td>
                   <td className="py-3.5 px-4 font-mono text-slate-400">{net.gateway || '-'}</td>
-                  <td className="py-3.5 px-4 font-mono text-amber-300">
+                  <td className="py-3.5 px-4 font-mono text-slate-300">
                     {net.ports ? (
-                      <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-[11px]">
+                      <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[11px]">
                         {net.ports}
                       </span>
                     ) : (
@@ -65,15 +65,15 @@ export function NetworkOverview({ networks }: NetworkOverviewProps) {
                   </td>
                   <td className="py-3.5 px-4">
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] font-medium ${
+                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[10px] font-medium ${
                         isActive
-                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                          ? 'bg-emerald-950/30 text-emerald-300 border border-emerald-800/40'
                           : 'bg-slate-800 text-slate-400 border border-slate-700'
                       }`}
                     >
                       <span
                         className={`w-1.5 h-1.5 rounded-full ${
-                          isActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+                          isActive ? 'bg-emerald-400' : 'bg-slate-500'
                         }`}
                       />
                       {isActive ? 'ACTIVE' : 'DOWN'}

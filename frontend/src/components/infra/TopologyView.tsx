@@ -84,7 +84,7 @@ export function TopologyView({ topology, onSelectVm }: TopologyViewProps) {
           return (
             <div
               key={node.node}
-              className="glow-card rounded-2xl border border-slate-800 overflow-hidden transition-all duration-300"
+              className="rounded-xl border border-slate-800/80 bg-slate-900/50 overflow-hidden transition-all duration-200"
             >
               {/* Node Header Row */}
               <div
@@ -94,19 +94,19 @@ export function TopologyView({ topology, onSelectVm }: TopologyViewProps) {
                 <div className="flex items-center gap-3">
                   <button className="text-slate-400 hover:text-slate-200">
                     {isExpanded ? (
-                      <ChevronDown className="w-5 h-5 text-emerald-400" />
+                      <ChevronDown className="w-4 h-4 text-slate-300" />
                     ) : (
-                      <ChevronRight className="w-5 h-5 text-slate-500" />
+                      <ChevronRight className="w-4 h-4 text-slate-500" />
                     )}
                   </button>
-                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-mono font-bold text-xs">
+                  <div className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 border border-slate-700/60 flex items-center justify-center font-mono font-bold text-xs">
                     {node.node.slice(-2)}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="font-semibold text-sm text-slate-100 font-mono">{node.node}</h4>
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950/30 text-emerald-300 border border-emerald-800/40">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                         ONLINE
                       </span>
                     </div>

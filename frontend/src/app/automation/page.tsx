@@ -193,7 +193,7 @@ export default function AutomationPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {rules.map((rule) => (
-              <Card key={rule.id} className="glow-card border-slate-800 bg-slate-900/70">
+              <Card key={rule.id} className="border border-slate-800/80 bg-slate-900/50">
                 <CardHeader className="p-5 pb-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -296,7 +296,7 @@ export default function AutomationPage() {
             </div>
           </div>
 
-          <Card className="glow-card border-slate-800 bg-slate-900/70 overflow-hidden">
+          <Card className="border border-slate-800/80 bg-slate-900/50 overflow-hidden">
             <Table className="text-xs">
               <TableHeader className="bg-slate-900/60 uppercase font-mono text-[11px]">
                 <TableRow className="border-slate-800">
@@ -330,8 +330,8 @@ export default function AutomationPage() {
                           </TableCell>
                           <TableCell className="py-3.5 px-4 whitespace-nowrap">
                             <Badge
-                              variant={isAi ? 'purple' : log.actor === 'automation-engine' ? 'warning' : 'info'}
-                              className="font-mono text-[10px]"
+                              variant="outline"
+                              className="font-mono text-[10px] bg-slate-800 text-slate-300 border-slate-700"
                             >
                               {log.actor.toUpperCase()}
                             </Badge>
@@ -345,8 +345,8 @@ export default function AutomationPage() {
                                 <div className="text-[11px] font-medium text-slate-200 line-clamp-1">
                                   "{log.details?.prompt}"
                                 </div>
-                                <div className="text-[11px] text-purple-300/90 line-clamp-1 flex items-center gap-1 font-mono">
-                                  <span>💡 {whyText}</span>
+                                <div className="text-[11px] text-slate-400 line-clamp-1 flex items-center gap-1 font-mono">
+                                  <span>{whyText}</span>
                                 </div>
                               </div>
                             ) : (
@@ -367,7 +367,7 @@ export default function AutomationPage() {
                           <TableCell className="py-3.5 px-4 text-right">
                             <button className="text-slate-400 hover:text-slate-200">
                               {isExpanded ? (
-                                <ChevronDown className="w-4 h-4 text-emerald-400" />
+                                <ChevronDown className="w-4 h-4 text-slate-300" />
                               ) : (
                                 <ChevronRight className="w-4 h-4" />
                               )}
@@ -381,18 +381,18 @@ export default function AutomationPage() {
                             <TableCell colSpan={6} className="p-4 space-y-3 border-t border-slate-800/80">
                               {isAi ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                                  <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-1.5">
-                                    <div className="font-semibold text-purple-300 flex items-center gap-1.5">
-                                      <Brain className="w-3.5 h-3.5 text-purple-400" />
-                                      <span>AI 판단 및 도구 선택 사유</span>
+                                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5">
+                                    <div className="font-semibold text-slate-200 flex items-center gap-1.5">
+                                      <Brain className="w-3.5 h-3.5 text-slate-400" />
+                                      <span>도구 선택 사유 및 분석 결과</span>
                                     </div>
-                                    <p className="text-[11px] text-slate-200 leading-relaxed bg-slate-900/60 p-2 rounded-lg border border-purple-500/20">
+                                    <p className="text-[11px] text-slate-300 leading-relaxed bg-slate-950/60 p-2 rounded-lg border border-slate-800">
                                       {log.details?.why || '-'}
                                     </p>
                                     <div className="text-[10px] font-mono text-slate-400 flex items-center gap-3 pt-0.5">
-                                      <span>의도: <strong className="text-purple-300">{log.details?.intent || '-'}</strong></span>
+                                      <span>의도: <strong className="text-slate-200">{log.details?.intent || '-'}</strong></span>
                                       {log.details?.latencyMs && (
-                                        <span>추론 지연: <strong className="text-cyan-300">{log.details.latencyMs}ms</strong></span>
+                                        <span>추론 지연: <strong className="text-slate-300">{log.details.latencyMs}ms</strong></span>
                                       )}
                                     </div>
                                   </div>

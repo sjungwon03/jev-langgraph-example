@@ -13,11 +13,11 @@ export function NodeCard({ node }: { node: ProxmoxNode }) {
   const diskPercent = Math.round((node.disk / (node.maxdisk || 1)) * 100);
 
   return (
-    <Card className="glow-card border-slate-800 bg-slate-900/70">
+    <Card className="border border-slate-800/80 bg-slate-900/50">
       <CardHeader className="p-5 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-emerald-400">
+            <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 border border-slate-700/60">
               <Server className="w-4 h-4" />
             </div>
             <div>
@@ -28,8 +28,8 @@ export function NodeCard({ node }: { node: ProxmoxNode }) {
             </div>
           </div>
           <Badge
-            variant={node.status === 'online' ? 'success' : 'destructive'}
-            className="font-mono text-xs font-medium"
+            variant="outline"
+            className="font-mono text-xs font-medium bg-slate-800/80 text-slate-300 border-slate-700/80"
           >
             {node.status.toUpperCase()}
           </Badge>
