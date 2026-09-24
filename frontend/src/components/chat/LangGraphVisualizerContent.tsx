@@ -18,14 +18,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { fetchLangGraphDefinition, LangGraphDefinition } from '@/lib/api';
-import { LangGraphCanvas } from './LangGraphCanvas';
+import { LangGraphCanvas, GraphExecutionState } from './LangGraphCanvas';
 
 interface LangGraphVisualizerContentProps {
+  executionState?: GraphExecutionState;
   activeNodeId?: string | null;
   showHeader?: boolean;
 }
 
 export function LangGraphVisualizerContent({
+  executionState,
   activeNodeId,
   showHeader = true,
 }: LangGraphVisualizerContentProps) {
@@ -187,6 +189,7 @@ export function LangGraphVisualizerContent({
             {/* Interactive HTML5 Flow Diagram Canvas */}
             <div className="flex-1 h-full overflow-hidden relative">
               <LangGraphCanvas
+                executionState={executionState}
                 activeNodeId={activeNodeId}
                 onSelectNode={(id) => setSelectedNodeId(id)}
                 compact={true}

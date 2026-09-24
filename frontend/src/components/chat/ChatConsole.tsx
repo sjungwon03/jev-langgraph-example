@@ -618,6 +618,7 @@ export function ChatConsole() {
       <LangGraphVisualizerModal
         isOpen={isGraphModalOpen}
         onClose={() => setIsGraphModalOpen(false)}
+        executionState={executionState}
         activeNodeId={executionState.activeNodeId}
       />
     </div>
