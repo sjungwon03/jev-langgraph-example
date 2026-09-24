@@ -69,6 +69,8 @@ services:
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_BASE_URL=${LLM_BASE_URL}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - JEV_BASE_URL=${JEV_BASE_URL:-https://api.typesafe.ai}
+      - JEV_API_KEY=${JEV_API_KEY:-}
       - JEV_USE_BASE_AUTH=${JEV_USE_BASE_AUTH:-false}
       - JEV_AUTH_TYPE=${JEV_AUTH_TYPE:-bearer}
       - JEV_BASE_AUTH_USER=${JEV_BASE_AUTH_USER:-}

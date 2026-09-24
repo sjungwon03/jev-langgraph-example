@@ -219,32 +219,52 @@ export class LangGraphAgentService {
   }
 
   /**
-   * Helper: Formats the guidance message when no LLM is connected.
+   * Helper: Formats the guidance message when LLM / JEV connection configuration is needed.
    */
-  private getLlmNotConnectedMessage(): string {
+  private getSystemConnectionGuideMessage(): string {
     return (
-      `⚠️ **LLM(대형 언어 모델)이 연결되어 있지 않습니다.**\n\n` +
-      `자연어 기반 Proxmox 인프라 제어 및 질의응답을 사용하려면 **실제 LLM 연결**이 필요합니다.\n` +
-      `*(내장된 규칙/패턴 기반 임시 지능형 모드가 비활성화되었습니다.)*\n\n` +
+      `⚠️ **LLM 및 JEV 시스템 연결 설정이 필요합니다.**\n\n` +
+      `본 Proxmox 인프라 자율 제어 시스템은 **(1) LLM(대형 언어 모델)** 과 **(2) JEV(인프라 의사결정 및 거버넌스 프레임워크)** 2개 핵심 엔진을 함께 사용합니다.\n` +
+      `현재 LLM API Key가 비어 있으며 내장된 임시 NLU 규칙이 비활성화되어 있으므로, 아래 안내에 따라 환경 설정을 완료해주세요.\n\n` +
       `---\n\n` +
-      `### ⚙️ LLM 연결 방법 안내\n\n` +
-      `\`infra/docker-compose.yml\` 파일의 \`infra-agent-service\` 환경변수 또는 프로젝트 루트 \`.env\`에 다음 설정을 추가해주세요:\n\n` +
-      `#### 1. OpenAI (또는 호환 클라우드 LLM)\n` +
+      `### 1️⃣ LLM (Large Language Model) 설정\n` +
+      `자연어 발화 심층 분석, 사용자 의도 파악, Proxmox 관리 툴 바인딩 및 자연스러운 대화 응답 합성을 담당합니다.\n\n` +
+      `#### • OpenAI (또는 OpenAI 호환 클라우드 LLM)\n` +
       `\`\`\`yaml\n` +
       `environment:\n` +
       `  - LLM_API_KEY=sk-...                  # OpenAI API 키\n` +
       `  - LLM_MODEL=gpt-4o-mini               # 사용할 모델명 (기본값: gpt-4o-mini)\n` +
       `\`\`\`\n\n` +
-      `#### 2. 로컬 LLM (Ollama, vLLM, DeepSeek, LocalAI 등)\n` +
+      `#### • 로컬 LLM (Ollama, vLLM, DeepSeek, LocalAI 등)\n` +
       `\`\`\`yaml\n` +
       `environment:\n` +
       `  - LLM_API_KEY=ollama-local             # 임의의 API 키 또는 토큰\n` +
       `  - LLM_BASE_URL=http://<host>:11434/v1  # 로컬 LLM 엔드포인트 URL\n` +
-      `  - LLM_MODEL=llama3                    # 사용할 모델명\n` +
+      `  - LLM_MODEL=llama3                    # 사용할 로컬 모델명\n` +
       `\`\`\`\n\n` +
-      `설정 저장 후 아래 명령어로 에이전트 서비스를 재시작하세요:\n` +
+      `---\n\n` +
+      `### 2️⃣ JEV (TypeSafe AI Engine & Base Auth) 설정\n` +
+      `JEV 라이브러리의 Fetch Override 및 HTTP Basic(Base Auth) / Bearer 인증을 통해 인프라 거버넌스 및 의사결정 엔진과 통신합니다.\n\n` +
+      `#### • JEV 기본 게이트웨이 설정 (Bearer 인증)\n` +
+      `\`\`\`yaml\n` +
+      `environment:\n` +
+      `  - JEV_BASE_URL=https://api.typesafe.ai # JEV 게이트웨이 엔드포인트 URL\n` +
+      `  - JEV_API_KEY=your-jev-api-key         # JEV Bearer API 키\n` +
+      `  - JEV_AUTH_TYPE=bearer                 # 인증 타입 (기본: bearer)\n` +
+      `\`\`\`\n\n` +
+      `#### • JEV Base Auth (HTTP Basic Auth) 활성화 시\n` +
+      `\`\`\`yaml\n` +
+      `environment:\n` +
+      `  - JEV_USE_BASE_AUTH=true               # HTTP Basic Base Auth 활성화 여부\n` +
+      `  - JEV_AUTH_TYPE=basic                  # 인증 스키마\n` +
+      `  - JEV_BASE_AUTH_USER=admin             # Base Auth 사용자 ID / 계정명\n` +
+      `  - JEV_BASE_AUTH_PASS=secret1234!       # Base Auth 패스워드 또는 시크릿\n` +
+      `\`\`\`\n\n` +
+      `---\n\n` +
+      `### 🚀 설정 적용 방법\n\n` +
+      `\`infra/docker-compose.yml\`의 \`infra-agent-service\` 섹션 또는 루트 \`.env\`에 입력 후 서비스를 재시작하세요:\n` +
       `\`\`\`bash\n` +
-      `docker compose restart infra-agent-service\n` +
+      `docker compose -f infra/docker-compose.yml restart infra-agent-service\n` +
       `\`\`\``
     );
   }
@@ -269,7 +289,7 @@ export class LangGraphAgentService {
         decisionWhy: 'LLM(대형 언어 모델)이 연결되어 있지 않아 자연어 분석을 수행하지 않고 연결 안내 메시지를 반환합니다.',
         safetyEvaluation: 'SAFE',
         toolToCall: null,
-        finalResponse: this.getLlmNotConnectedMessage(),
+        finalResponse: this.getSystemConnectionGuideMessage(),
       };
     }
 
@@ -468,7 +488,7 @@ ${toolInfo}`;
 
     // 4. If reached without LLM, return guidance
     return {
-      finalResponse: this.getLlmNotConnectedMessage(),
+      finalResponse: this.getSystemConnectionGuideMessage(),
     };
   }
 
