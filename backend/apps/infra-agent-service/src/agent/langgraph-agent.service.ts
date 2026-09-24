@@ -515,62 +515,72 @@ ${toolInfo}`;
 
     const startTime = Date.now();
     try {
-      const result = await this.appGraph.invoke(initialState);
-      const latencyMs = Date.now() - startTime;
+      const stream = await this.appGraph.stream(initialState, { streamMode: 'updates' });
+      let currentToolName = '';
+      let currentToolArgs: any = null;
+      let finalResponse = '';
 
-      // Yield decision chunk containing rationale and tool selection justification
-      yield {
-        type: 'decision',
-        decision: {
-          intent: result.intent,
-          tool: result.toolToCall?.name,
-          why: result.decisionWhy || '사용자 자연어 명령 분석 완료',
-          safetyEvaluation: result.safetyEvaluation || 'SAFE',
-          args: result.toolToCall?.args,
-          latencyMs,
-        },
-        threadId,
-      };
+      for await (const chunk of stream) {
+        for (const [nodeName, nodeOutput] of Object.entries(chunk)) {
+          const out: any = nodeOutput;
 
-      // If tool was called
-      if (result.toolToCall) {
-        yield {
-          type: 'tool_start',
-          tool: result.toolToCall.name,
-          input: result.toolToCall.args,
-          threadId,
-        };
+          if (nodeName === 'router') {
+            currentToolName = out.toolToCall?.name || '';
+            currentToolArgs = out.toolToCall?.args || null;
+            if (out.finalResponse) finalResponse = out.finalResponse;
 
-        if (result.confirmationNeeded) {
-          const conf = result.confirmationNeeded;
-          yield {
-            type: 'confirmation_required',
-            confirmation: {
-              token: conf.token,
-              action: conf.action,
-              node: conf.node,
-              vmid: conf.vmid,
-              description: conf.description,
-              expiresAt: new Date(conf.expiresAt).toISOString(),
-            },
-            threadId,
-          };
-        } else if (result.toolResult) {
-          yield {
-            type: 'tool_end',
-            tool: result.toolToCall.name,
-            output: result.toolResult,
-            threadId,
-          };
+            yield {
+              type: 'decision',
+              decision: {
+                intent: out.intent,
+                tool: currentToolName,
+                why: out.decisionWhy || '사용자 자연어 명령 분석 완료',
+                safetyEvaluation: out.safetyEvaluation || 'SAFE',
+                args: currentToolArgs,
+                latencyMs: Date.now() - startTime,
+              },
+              threadId,
+            };
+          } else if (nodeName === 'safety_check') {
+            if (out.confirmationNeeded) {
+              const conf = out.confirmationNeeded;
+              yield {
+                type: 'confirmation_required',
+                confirmation: {
+                  token: conf.token,
+                  action: conf.action,
+                  node: conf.node,
+                  vmid: conf.vmid,
+                  description: conf.description,
+                  expiresAt: new Date(conf.expiresAt).toISOString(),
+                },
+                threadId,
+              };
+            } else if (currentToolName) {
+              yield {
+                type: 'tool_start',
+                tool: currentToolName,
+                input: currentToolArgs,
+                threadId,
+              };
+            }
+          } else if (nodeName === 'tool_executor') {
+            yield {
+              type: 'tool_end',
+              tool: currentToolName,
+              output: out.toolResult,
+              threadId,
+            };
+          } else if (nodeName === 'synthesizer') {
+            finalResponse = out.finalResponse || finalResponse;
+            yield {
+              type: 'content',
+              content: finalResponse,
+              threadId,
+            };
+          }
         }
       }
-
-      // Final response stream
-      yield {
-        type: 'content',
-        content: result.finalResponse,
-        threadId,
-      };
 
       yield {
         type: 'done',

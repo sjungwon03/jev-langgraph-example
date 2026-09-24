@@ -11,8 +11,7 @@ import {
   CheckCircle2,
   Sparkles,
   Server,
-  Cpu,
-  Check,
+  ArrowRight,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -47,17 +46,9 @@ export interface CanvasEdge {
   to: string;
   label?: string;
   condition?: string;
-  color?: string;
+  color: string;
   dashed?: boolean;
   isExternalBus?: boolean;
-}
-
-interface Particle {
-  edgeId: string;
-  t: number;
-  speed: number;
-  size: number;
-  color: string;
 }
 
 interface LangGraphCanvasProps {
@@ -250,7 +241,7 @@ const fixedEdges: CanvasEdge[] = [
     color: '#818cf8',
   },
 
-  // External Service Data Busses (Dashed Glowing Lines)
+  // External Service Data Busses
   {
     id: 'e-router-llm',
     from: 'router',
@@ -302,12 +293,25 @@ export function LangGraphCanvas({
   const [selectedNodeId, setSelectedNodeId] = useState<string>('router');
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
-  // References to preserve 60fps render loop without restarts
   const effectiveActiveId = executionState?.activeNodeId || activeNodeId || null;
   const activeNodeIdRef = useRef<string | null>(effectiveActiveId);
+  const previousNodeIdRef = useRef<string | null>(null);
   const executionStateRef = useRef<GraphExecutionState | undefined>(executionState);
   const selectedNodeIdRef = useRef<string>(selectedNodeId);
   const hoveredNodeIdRef = useRef<string | null>(null);
+
+  // Active Traversal State (Energy Orb gliding along active edge)
+  const traversalRef = useRef<{
+    activeEdgeId: string | null;
+    progress: number;
+    startTime: number;
+    duration: number;
+  }>({
+    activeEdgeId: null,
+    progress: 1,
+    startTime: 0,
+    duration: 500,
+  });
 
   const transformRef = useRef<{ scale: number; offsetX: number; offsetY: number }>({
     scale: 1,
@@ -315,9 +319,44 @@ export function LangGraphCanvas({
     offsetY: 0,
   });
 
+  // Trigger active edge transition when activeNodeId changes
   useEffect(() => {
-    activeNodeIdRef.current = effectiveActiveId;
-  }, [effectiveActiveId]);
+    const prev = previousNodeIdRef.current;
+    const curr = effectiveActiveId;
+
+    if (curr && curr !== prev) {
+      let targetEdgeId: string | null = null;
+
+      if (curr === 'router') {
+        targetEdgeId = 'e-start-router';
+      } else if (curr === 'safety_check') {
+        targetEdgeId = 'e-router-safety';
+      } else if (curr === 'tool_executor') {
+        targetEdgeId = 'e-safety-tool';
+      } else if (curr === 'synthesizer') {
+        // Did we come from tool_executor or router bypass?
+        if (executionState?.activeTool) {
+          targetEdgeId = 'e-tool-synth';
+        } else {
+          targetEdgeId = 'e-router-synth-bypass';
+        }
+      } else if (curr === '__end__') {
+        targetEdgeId = 'e-synth-end';
+      }
+
+      if (targetEdgeId) {
+        traversalRef.current = {
+          activeEdgeId: targetEdgeId,
+          progress: 0,
+          startTime: performance.now(),
+          duration: 600, // 600ms smooth gliding traversal
+        };
+      }
+    }
+
+    previousNodeIdRef.current = curr;
+    activeNodeIdRef.current = curr;
+  }, [effectiveActiveId, executionState?.activeTool]);
 
   useEffect(() => {
     executionStateRef.current = executionState;
@@ -326,26 +365,6 @@ export function LangGraphCanvas({
   useEffect(() => {
     selectedNodeIdRef.current = selectedNodeId;
   }, [selectedNodeId]);
-
-  // Particles state
-  const particlesRef = useRef<Particle[]>([]);
-
-  useEffect(() => {
-    const pts: Particle[] = [];
-    fixedEdges.forEach((edge) => {
-      const count = edge.isExternalBus ? 2 : 3;
-      for (let i = 0; i < count; i++) {
-        pts.push({
-          edgeId: edge.id,
-          t: i / count,
-          speed: 0.004 + Math.random() * 0.003,
-          size: 2.5 + Math.random() * 1.5,
-          color: edge.color || '#38bdf8',
-        });
-      }
-    });
-    particlesRef.current = pts;
-  }, []);
 
   // Helper: Bezier evaluation
   const getBezierPoint = (
@@ -376,7 +395,6 @@ export function LangGraphCanvas({
     const toNode = fixedNodes.find((n) => n.id === edge.to);
     if (!fromNode || !toNode) return null;
 
-    // 1. Core State Machine Flows
     if (edge.id === 'e-start-router') {
       const p0 = { x: fromNode.x + fromNode.w / 2, y: fromNode.y + fromNode.h };
       const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
@@ -420,7 +438,7 @@ export function LangGraphCanvas({
       return { p0, p1: { x: p0.x, y: p0.y + 16 }, p2: { x: p3.x, y: p3.y - 16 }, p3 };
     }
 
-    // 2. External Service Data Busses
+    // External Busses
     if (edge.id === 'e-router-llm') {
       const p0 = { x: fromNode.x + fromNode.w, y: fromNode.y + fromNode.h / 2 };
       const p3 = { x: toNode.x, y: toNode.y + toNode.h / 2 };
@@ -522,11 +540,11 @@ export function LangGraphCanvas({
       ctx.fillRect(0, 0, cw, ch);
 
       // Subtle cyber grid dots
-      ctx.fillStyle = 'rgba(51, 65, 85, 0.25)';
-      const step = 20;
-      for (let x = 10; x < cw; x += step) {
-        for (let y = 10; y < ch; y += step) {
-          ctx.fillRect(x, y, 1.2, 1.2);
+      ctx.fillStyle = 'rgba(51, 65, 85, 0.2)';
+      const step = 22;
+      for (let x = 11; x < cw; x += step) {
+        for (let y = 11; y < ch; y += step) {
+          ctx.fillRect(x, y, 1, 1);
         }
       }
 
@@ -538,43 +556,56 @@ export function LangGraphCanvas({
       const exec = executionStateRef.current;
       const selectedNode = selectedNodeIdRef.current;
       const hoveredNode = hoveredNodeIdRef.current;
+      const isExecuting = !!activeNode;
 
       const visitedSet = new Set(exec?.visitedNodeIds || []);
       if (activeNode) visitedSet.add(activeNode);
+
+      // Update Active Traversal Progress
+      const traversal = traversalRef.current;
+      if (traversal.activeEdgeId && traversal.progress < 1) {
+        const elapsed = time - traversal.startTime;
+        traversal.progress = Math.min(elapsed / traversal.duration, 1);
+      }
 
       // 1. Draw Edges
       fixedEdges.forEach((edge) => {
         const pts = getEdgePoints(edge);
         if (!pts) return;
 
-        // Check if edge is on the active path
+        const isTraversingNow = traversal.activeEdgeId === edge.id;
         const isFromActive = activeNode === edge.from;
         const isToActive = activeNode === edge.to;
         const isExternalActive =
           (edge.to === 'llm_service' && exec?.isLlmActive) ||
           (edge.to === 'jev_service' && exec?.isJevActive);
 
-        const isEdgeActive = isFromActive || isToActive || isExternalActive;
-        const isEdgeVisited = visitedSet.has(edge.from) && visitedSet.has(edge.to);
+        // Has this edge been traversed in this conversation?
+        const isVisitedEdge = visitedSet.has(edge.from) && visitedSet.has(edge.to);
 
         ctx.save();
         if (edge.dashed) {
           ctx.setLineDash([4, 4]);
         }
 
-        if (isEdgeActive) {
-          ctx.shadowColor = edge.color || '#38bdf8';
-          ctx.shadowBlur = 12;
-          ctx.lineWidth = 2.8;
-          ctx.strokeStyle = edge.color || '#38bdf8';
-        } else if (isEdgeVisited) {
+        if (isTraversingNow) {
+          ctx.shadowColor = edge.color;
+          ctx.shadowBlur = 18;
+          ctx.lineWidth = 3.5;
+          ctx.strokeStyle = edge.color;
+        } else if (isFromActive || isToActive || isExternalActive) {
+          ctx.shadowColor = edge.color;
+          ctx.shadowBlur = 10;
+          ctx.lineWidth = 2.4;
+          ctx.strokeStyle = edge.color;
+        } else if (isVisitedEdge) {
           ctx.shadowBlur = 4;
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = edge.color ? `${edge.color}aa` : 'rgba(56, 189, 248, 0.7)';
+          ctx.lineWidth = 1.8;
+          ctx.strokeStyle = `${edge.color}aa`;
         } else {
           ctx.shadowBlur = 0;
-          ctx.lineWidth = 1.2;
-          ctx.strokeStyle = edge.isExternalBus ? 'rgba(51, 65, 85, 0.3)' : 'rgba(71, 85, 105, 0.35)';
+          ctx.lineWidth = 1.1;
+          ctx.strokeStyle = edge.isExternalBus ? 'rgba(51, 65, 85, 0.25)' : 'rgba(71, 85, 105, 0.3)';
         }
 
         ctx.beginPath();
@@ -583,7 +614,7 @@ export function LangGraphCanvas({
         ctx.stroke();
         ctx.restore();
 
-        // Edge label (only show on active or visited or main path)
+        // Edge label (highlight if active or visited)
         if (edge.label) {
           const mid = getBezierPoint(pts.p0, pts.p1, pts.p2, pts.p3, 0.5);
           ctx.save();
@@ -592,14 +623,15 @@ export function LangGraphCanvas({
           const bw = textMetrics.width + 10;
           const bh = 15;
 
-          ctx.fillStyle = isEdgeActive ? 'rgba(15, 23, 42, 0.96)' : 'rgba(10, 15, 26, 0.85)';
-          ctx.strokeStyle = isEdgeActive ? (edge.color || '#38bdf8') : 'rgba(51, 65, 85, 0.6)';
+          const isHighlighted = isTraversingNow || isVisitedEdge || isFromActive || isToActive;
+          ctx.fillStyle = isHighlighted ? 'rgba(15, 23, 42, 0.96)' : 'rgba(10, 15, 26, 0.85)';
+          ctx.strokeStyle = isHighlighted ? edge.color : 'rgba(51, 65, 85, 0.5)';
           ctx.lineWidth = 1;
           drawRoundedRect(ctx, mid.x - bw / 2, mid.y - bh / 2, bw, bh, 3);
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = isEdgeActive ? (edge.color || '#38bdf8') : '#94a3b8';
+          ctx.fillStyle = isHighlighted ? edge.color : '#64748b';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(edge.label, mid.x, mid.y);
@@ -607,34 +639,84 @@ export function LangGraphCanvas({
         }
       });
 
-      // 2. Draw Animated Edge Particles (Energy Packets)
-      particlesRef.current.forEach((particle) => {
-        const edge = fixedEdges.find((e) => e.id === particle.edgeId);
-        if (!edge) return;
-        const pts = getEdgePoints(edge);
-        if (!pts) return;
+      // 2. Draw Active Traversal Energy Orb (ONLY when active chat traversal happens!)
+      if (traversal.activeEdgeId && traversal.progress < 1) {
+        const edge = fixedEdges.find((e) => e.id === traversal.activeEdgeId);
+        if (edge) {
+          const pts = getEdgePoints(edge);
+          if (pts) {
+            const pt = getBezierPoint(pts.p0, pts.p1, pts.p2, pts.p3, traversal.progress);
 
-        const isFromActive = activeNode === edge.from;
-        const isToActive = activeNode === edge.to;
-        const isExternalActive =
-          (edge.to === 'llm_service' && exec?.isLlmActive) ||
-          (edge.to === 'jev_service' && exec?.isJevActive);
+            // Draw comet trail (past 3 points)
+            for (let i = 1; i <= 3; i++) {
+              const tailProgress = Math.max(traversal.progress - i * 0.05, 0);
+              const tailPt = getBezierPoint(pts.p0, pts.p1, pts.p2, pts.p3, tailProgress);
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(tailPt.x, tailPt.y, 3 - i * 0.7, 0, Math.PI * 2);
+              ctx.fillStyle = edge.color;
+              ctx.globalAlpha = 0.6 - i * 0.18;
+              ctx.fill();
+              ctx.restore();
+            }
 
-        const isEdgeActive = isFromActive || isToActive || isExternalActive;
-        const speedBoost = isEdgeActive ? 3.2 : 0.8;
+            // Main glowing energy orb
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = edge.color;
+            ctx.shadowBlur = 18;
+            ctx.fill();
 
-        particle.t = (particle.t + particle.speed * speedBoost) % 1;
-        const pt = getBezierPoint(pts.p0, pts.p1, pts.p2, pts.p3, particle.t);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
+            ctx.strokeStyle = edge.color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+      }
 
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, isEdgeActive ? particle.size * 1.3 : particle.size * 0.9, 0, Math.PI * 2);
-        ctx.fillStyle = edge.color || '#38bdf8';
-        ctx.shadowColor = edge.color || '#38bdf8';
-        ctx.shadowBlur = isEdgeActive ? 14 : 4;
-        ctx.fill();
-        ctx.restore();
-      });
+      // External Data Bus Energy Packets (ONLY active when LLM or JEV are actively engaged)
+      if (exec?.isLlmActive) {
+        const edge = fixedEdges.find((e) => e.id === 'e-router-llm');
+        if (edge) {
+          const pts = getEdgePoints(edge);
+          if (pts) {
+            const t = (time / 300) % 1;
+            const pt = getBezierPoint(pts.p0, pts.p1, pts.p2, pts.p3, t);
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#38bdf8';
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 12;
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
+
+      if (exec?.isJevActive) {
+        const edge = fixedEdges.find((e) => e.id === 'e-jev-tool');
+        if (edge) {
+          const pts = getEdgePoints(edge);
+          if (pts) {
+            const t = (time / 300) % 1;
+            const pt = getBezierPoint(pts.p0, pts.p1, pts.p2, pts.p3, t);
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#c084fc';
+            ctx.shadowColor = '#c084fc';
+            ctx.shadowBlur = 12;
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
 
       // 3. Draw Nodes (Core + External Sidecars)
       fixedNodes.forEach((node) => {
@@ -643,7 +725,6 @@ export function LangGraphCanvas({
         const isSelected = selectedNode === node.id;
         const isHovered = hoveredNode === node.id;
 
-        // Is external service active?
         const isExternalActive =
           (node.id === 'llm_service' && exec?.isLlmActive) ||
           (node.id === 'jev_service' && exec?.isJevActive);
@@ -888,18 +969,18 @@ export function LangGraphCanvas({
       <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between pointer-events-none">
         <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur border border-slate-800 px-2.5 py-1 rounded-md text-xs shadow-md">
           <GitFork className="w-3.5 h-3.5 text-blue-400" />
-          <span className="font-semibold text-slate-200">LangGraph State Machine</span>
+          <span className="font-semibold text-slate-200">LangGraph 상태 머신</span>
           {effectiveActiveId ? (
             <Badge
               variant="outline"
               className="text-[10px] py-0 px-1.5 font-mono text-emerald-300 border-emerald-500/50 bg-emerald-950/50 animate-pulse flex items-center gap-1"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>실행: {effectiveActiveId}</span>
+              <span>탐색 중: {effectiveActiveId}</span>
             </Badge>
           ) : (
             <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono text-slate-400 border-slate-700 bg-slate-800/40">
-              대기 (Idle)
+              대기 (Standby)
             </Badge>
           )}
         </div>
@@ -908,7 +989,7 @@ export function LangGraphCanvas({
         {executionState?.activeTool && (
           <div className="flex items-center gap-1.5 bg-purple-950/80 backdrop-blur border border-purple-800/80 px-2.5 py-1 rounded-md text-[11px] font-mono text-purple-300 animate-pulse shadow-md">
             <Wrench className="w-3 h-3 text-purple-400" />
-            <span>도구: {executionState.activeTool}()</span>
+            <span>호출: {executionState.activeTool}()</span>
           </div>
         )}
       </div>
@@ -923,14 +1004,35 @@ export function LangGraphCanvas({
         />
       </div>
 
-      {/* Live Status Message Banner */}
-      {executionState?.statusMessage && (
-        <div className="px-3 py-1.5 border-t border-slate-800/80 bg-slate-900/70 text-[11px] flex items-center gap-2 text-slate-300 shrink-0 font-mono">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-          <span className="text-slate-400">STATUS:</span>
-          <span className="text-blue-200 font-sans">{executionState.statusMessage}</span>
+      {/* Live Status Message & Traversal Trail Banner */}
+      <div className="px-3 py-1.5 border-t border-slate-800/80 bg-slate-900/70 text-[11px] flex items-center justify-between text-slate-300 shrink-0 font-mono">
+        <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
+          {effectiveActiveId ? (
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+          ) : (
+            <span className="w-2 h-2 rounded-full bg-slate-600 shrink-0" />
+          )}
+          <span className="text-slate-400 shrink-0 font-semibold">
+            {effectiveActiveId ? '실시간 탐색:' : '탐색 대기:'}
+          </span>
+          <span className="text-blue-200 font-sans truncate">
+            {executionState?.statusMessage || '채팅 메시지를 전송하면 LangGraph 상태 머신이 노드를 탐색합니다.'}
+          </span>
         </div>
-      )}
+
+        {/* Traversal Summary Trail */}
+        {executionState?.visitedNodeIds && executionState.visitedNodeIds.length > 0 && (
+          <div className="hidden sm:flex items-center gap-1 text-[10px] text-slate-400 font-mono shrink-0 pl-2">
+            <span>트레일:</span>
+            {executionState.visitedNodeIds.map((nid, idx) => (
+              <span key={nid} className="flex items-center gap-0.5">
+                <span className="text-emerald-400">{nid}</span>
+                {idx < executionState.visitedNodeIds.length - 1 && <ArrowRight className="w-2.5 h-2.5 text-slate-600" />}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Selected Node Details Drawer */}
       {!compact && selectedNode && (
