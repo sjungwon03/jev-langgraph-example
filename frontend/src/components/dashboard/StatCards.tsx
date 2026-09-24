@@ -15,51 +15,51 @@ export function StatCards({ summary }: { summary: ClusterSummary | null }) {
       value: `${nodeCount} Nodes`,
       desc: 'Proxmox VE Cluster',
       icon: Server,
-      color: 'text-emerald-400',
-      bgColor: 'bg-emerald-500/10',
+      color: 'text-slate-200',
+      bgColor: 'bg-slate-800/60',
     },
     {
-      title: '활성 VM / LXC',
+      title: '활성 인스턴스 (VM/LXC)',
       value: `${runningVms} / ${totalVms}`,
       desc: `${totalVms - runningVms} Stopped`,
       icon: Layers,
-      color: 'text-cyan-400',
-      bgColor: 'bg-cyan-500/10',
+      color: 'text-slate-200',
+      bgColor: 'bg-slate-800/60',
     },
     {
       title: '클러스터 평균 CPU',
       value: `${avgCpu}%`,
       desc: 'Total Core Utilization',
       icon: Activity,
-      color: 'text-amber-400',
-      bgColor: 'bg-amber-500/10',
+      color: 'text-slate-200',
+      bgColor: 'bg-slate-800/60',
     },
     {
-      title: '클러스터 총 메모리',
+      title: '클러스터 메모리 점유율',
       value: `${avgMem}%`,
-      desc: 'Allocated vs Capacity',
+      desc: 'Allocated vs Total RAM',
       icon: Terminal,
-      color: 'text-teal-400',
-      bgColor: 'bg-teal-500/10',
+      color: 'text-slate-200',
+      bgColor: 'bg-slate-800/60',
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
       {stats.map((stat, i) => {
         const Icon = stat.icon;
         return (
-          <Card key={i} className="glow-card border-slate-800 bg-slate-900/70">
+          <Card key={i} className="border-slate-800/80 bg-slate-900/50 hover:bg-slate-900/80 transition-colors">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs text-slate-400 font-medium">{stat.title}</p>
-                <h4 className="text-2xl font-bold text-slate-100 mt-1 font-mono tracking-tight">
+                <h4 className="text-xl font-bold text-slate-100 mt-1 font-mono tracking-tight">
                   {stat.value}
                 </h4>
                 <p className="text-[11px] text-slate-500 mt-0.5">{stat.desc}</p>
               </div>
-              <div className={`w-11 h-11 rounded-xl ${stat.bgColor} flex items-center justify-center ${stat.color}`}>
-                <Icon className="w-5 h-5" />
+              <div className={`w-9 h-9 rounded-lg ${stat.bgColor} border border-slate-700/50 flex items-center justify-center ${stat.color}`}>
+                <Icon className="w-4 h-4" />
               </div>
             </CardContent>
           </Card>

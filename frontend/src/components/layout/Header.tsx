@@ -1,8 +1,7 @@
 'use client';
 
-import { ExternalLink, RefreshCw, UserCheck, Wrench } from 'lucide-react';
+import { ExternalLink, RefreshCw, UserCheck, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useUserRole } from '@/lib/role-context';
 
 interface HeaderProps {
@@ -14,20 +13,21 @@ export function Header({ onRefresh, isRefreshing }: HeaderProps) {
   const { role, requesterName, department, setRole } = useUserRole();
 
   return (
-    <header className="h-16 border-b border-slate-800 bg-slate-950/70 backdrop-blur-md px-6 flex items-center justify-between shrink-0 z-10">
-      <div className="flex items-center gap-3">
-        <Badge variant="success" className="gap-2 py-1 font-medium">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          Proxmox MCP
-        </Badge>
+    <header className="h-14 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur px-6 flex items-center justify-between shrink-0 z-10">
+      <div className="flex items-center gap-4">
+        {/* Status Pill */}
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-[11px] text-slate-300 font-mono">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span>Proxmox VE Cluster</span>
+        </div>
 
-        {/* Role Switcher Pills */}
-        <div className="flex items-center bg-slate-900/90 border border-slate-800 p-0.5 rounded-lg text-xs">
+        {/* Role Switcher (Segmented Control) */}
+        <div className="flex items-center bg-slate-900/90 border border-slate-800/80 p-0.5 rounded-lg text-xs">
           <button
             onClick={() => setRole('DEV_TEAM')}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all font-medium ${
               role === 'DEV_TEAM'
-                ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40 shadow-sm'
+                ? 'bg-slate-800 text-slate-100 shadow-sm border border-slate-700/60'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -38,31 +38,32 @@ export function Header({ onRefresh, isRefreshing }: HeaderProps) {
             onClick={() => setRole('INFRA_TEAM')}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all font-medium ${
               role === 'INFRA_TEAM'
-                ? 'bg-amber-600/30 text-amber-300 border border-amber-500/40 shadow-sm'
+                ? 'bg-slate-800 text-slate-100 shadow-sm border border-slate-700/60'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Wrench className="w-3.5 h-3.5 text-amber-400" />
+            <Shield className="w-3.5 h-3.5 text-amber-400" />
             인프라팀 모드
           </button>
         </div>
 
-        <span className="text-xs text-slate-500 hidden md:inline-flex items-center gap-1">
-          현재 사용자:{' '}
-          <strong className="text-slate-300 font-mono">
-            {requesterName} ({department})
-          </strong>
+        <span className="text-xs text-slate-500 hidden md:inline-flex items-center gap-1.5">
+          <span>세션:</span>
+          <span className="text-slate-300 font-medium">
+            {requesterName}
+          </span>
+          <span className="text-slate-500 text-[11px]">({department})</span>
         </span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {onRefresh && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white"
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 h-8"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             새로고침
@@ -72,7 +73,7 @@ export function Header({ onRefresh, isRefreshing }: HeaderProps) {
           asChild
           variant="outline"
           size="sm"
-          className="text-xs text-slate-400 hover:text-slate-200"
+          className="text-xs text-slate-300 hover:text-white border-slate-800 bg-slate-900/60 hover:bg-slate-800 h-8"
         >
           <a
             href="http://localhost:3000/docs"
@@ -81,7 +82,7 @@ export function Header({ onRefresh, isRefreshing }: HeaderProps) {
             className="flex items-center gap-1.5"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            통합 Swagger
+            통합 API 명세
           </a>
         </Button>
       </div>

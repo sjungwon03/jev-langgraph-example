@@ -760,7 +760,7 @@ ${toolInfo}`;
         const req = res;
         return {
           finalResponse:
-            `📋 **[개발팀 자원 요청서 접수 완료 - ${req.id}]**\n\n` +
+            `### [개발팀 자원 요청서 접수 완료: ${req.id}]\n\n` +
             `인프라 안정성 및 거버넌스 정책에 따라 **인프라팀 승인 큐**로 정상 접수되었습니다.\n\n` +
             `| 항목 | 세부 내용 |\n` +
             `| :--- | :--- |\n` +
@@ -768,29 +768,29 @@ ${toolInfo}`;
             `| **요청 유형** | \`${req.type}\` |\n` +
             `| **신청자 / 부서** | **${req.requesterName}** (${req.department}) |\n` +
             `| **신청 사유** | ${req.reason} |\n` +
-            `| **AI 판단 스펙** | 🖥️ **CPU ${req.spec?.cores || 4} Cores** / 💾 **RAM ${req.spec?.memory >= 1024 ? Math.round(req.spec.memory / 1024) + ' GB' : (req.spec?.memory || 4096) + ' MB'}** / 💽 **Disk ${req.spec?.disk || 50} GB** |\n` +
-            `| **진행 상태** | ⏳ **인프라팀 승인 대기 중 (PENDING)** |\n\n` +
-            `> 💡 **안내**: 인프라팀 엔지니어가 클러스터 용량을 검토한 후 승인하면 Proxmox VE에 자동으로 배포됩니다. 상단 **[자원 요청 센터]** 메뉴에서 진행 상황을 확인하실 수 있습니다.`,
+            `| **도출 사양** | CPU ${req.spec?.cores || 4} Cores / RAM ${req.spec?.memory >= 1024 ? Math.round(req.spec.memory / 1024) + ' GB' : (req.spec?.memory || 4096) + ' MB'} / Disk ${req.spec?.disk || 50} GB |\n` +
+            `| **진행 상태** | 승인 대기 중 (PENDING) |\n\n` +
+            `> **안내**: 인프라팀 엔지니어가 클러스터 용량을 검토한 후 승인하면 Proxmox VE에 자동으로 배포됩니다. 상단 **[자원 요청 센터]** 메뉴에서 진행 상황을 확인하실 수 있습니다.`,
         };
       }
 
       if (toolName === 'list_resource_requests') {
         const list = Array.isArray(res) ? res : [];
-        let table = `### 📥 자원 요청 대기 및 처리 현황 (${list.length}건)\n\n`;
+        let table = `### 자원 요청 대기 및 처리 현황 (${list.length}건)\n\n`;
         table += `| 요청 ID | 제목 | 신청자 | 부서 | 유형 | 상태 | 등록일시 |\n`;
         table += `| :---: | :--- | :---: | :---: | :---: | :---: | :---: |\n`;
         for (const r of list) {
           const statusBadge =
             r.status === 'PENDING'
-              ? '⏳ 대기중'
+              ? '대기중'
               : r.status === 'PROVISIONED'
-                ? '🟢 배포완료'
+                ? '배포완료'
                 : r.status === 'APPROVED'
-                  ? '🔵 승인됨'
-                  : '🔴 반려';
+                  ? '승인됨'
+                  : '반려';
           table += `| \`${r.id}\` | **${r.title}** | ${r.requesterName} | ${r.department} | \`${r.type}\` | ${statusBadge} | ${new Date(r.createdAt).toLocaleTimeString()} |\n`;
         }
-        table += `\n> 💡 특정 요청을 승인하시려면 *"REQ-1001 승인"* 또는 *"REQ-1001 반려"*라고 말씀해 주세요.`;
+        table += `\n> 특정 요청을 승인 또는 반려하려면 *"REQ-1001 승인"* 또는 *"REQ-1001 반려"*라고 입력하세요.`;
         return { finalResponse: table };
       }
 
@@ -799,7 +799,7 @@ ${toolInfo}`;
         const isApproved = req.status === 'PROVISIONED' || req.status === 'APPROVED';
         return {
           finalResponse:
-            `${isApproved ? '✅' : '❌'} **[자원 요청 ${req.id} ${isApproved ? '승인 및 자동 프로비저닝 완료' : '반려 처리 완료'}]**\n\n` +
+            `### [자원 요청 ${req.id} ${isApproved ? '승인 및 자동 프로비저닝 완료' : '반려 처리 완료'}]\n\n` +
             `- **신청자**: ${req.requesterName} (${req.department})\n` +
             `- **검토자**: ${req.reviewerName || '인프라 관리자'}\n` +
             `- **처리 의견**: ${req.reviewerComment || '검토 완료'}\n` +
@@ -811,14 +811,14 @@ ${toolInfo}`;
 
       if (toolName === 'list_nodes') {
         const nodes = Array.isArray(res) ? res : [res];
-        let table = `### 🖥️ Proxmox 클러스터 노드 현황\n\n`;
+        let table = `### Proxmox 클러스터 노드 현황\n\n`;
         table += `| 노드명 | 상태 | CPU 사용률 | 메모리 사용량 | 업타임 |\n`;
         table += `| :--- | :---: | :---: | :---: | :---: |\n`;
         for (const n of nodes) {
           const cpu = ((n.cpu || 0) * 100).toFixed(1) + '%';
           const mem = `${((n.mem || 0) / 1024 / 1024 / 1024).toFixed(1)}GB / ${((n.maxmem || 0) / 1024 / 1024 / 1024).toFixed(1)}GB`;
           const uptime = `${Math.floor((n.uptime || 0) / 86400)}일 ${Math.floor(((n.uptime || 0) % 86400) / 3600)}시간`;
-          const statusBadge = n.status === 'online' ? '🟢 Online' : '🔴 Offline';
+          const statusBadge = n.status === 'online' ? 'Online' : 'Offline';
           table += `| **${n.node}** | ${statusBadge} | ${cpu} | ${mem} | ${uptime} |\n`;
         }
         return { finalResponse: table };
@@ -827,11 +827,11 @@ ${toolInfo}`;
       if (toolName === 'cluster_resources') {
         const items = Array.isArray(res) ? res : [];
         const vms = items.filter((i: any) => i.type === 'qemu' || i.type === 'lxc');
-        let table = `### 📦 전체 VM 및 컨테이너(LXC) 현황 (${vms.length}개)\n\n`;
+        let table = `### 전체 VM 및 컨테이너(LXC) 현황 (${vms.length}개)\n\n`;
         table += `| VMID | 이름 | 유형 | 노드 | 상태 | vCPU | 메모리 |\n`;
         table += `| :---: | :--- | :---: | :---: | :---: | :---: | :---: |\n`;
         for (const v of vms) {
-          const status = v.status === 'running' ? '🟢 Running' : '⚪ Stopped';
+          const status = v.status === 'running' ? 'Running' : 'Stopped';
           const mem = `${((v.mem || 0) / 1024 / 1024 / 1024).toFixed(1)}GB / ${((v.maxmem || 0) / 1024 / 1024 / 1024).toFixed(1)}GB`;
           table += `| \`${v.vmid}\` | **${v.name}** | \`${v.type.toUpperCase()}\` | ${v.node} | ${status} | ${v.cpus || 2} | ${mem} |\n`;
         }
@@ -845,17 +845,17 @@ ${toolInfo}`;
             ? '재부팅(Reboot)'
             : '종료(Stop)';
         return {
-          finalResponse: `✅ **VM ${state.toolToCall.args.vmid} ${actionVerb} 명령이 성공적으로 전달되었습니다.**\n\n` +
+          finalResponse: `### [VM ${state.toolToCall.args.vmid} ${actionVerb} 명령 완료]\n\n` +
             `- **대상**: 노드 \`${res.node || 'pve-node-01'}\` / VMID \`${res.vmid || state.toolToCall.args.vmid}\`\n` +
             `- **Task UPID**: \`${res.upid || 'UPID:SUCCESS'}\`\n` +
-            `- **현재 상태**: \`${res.status || 'processed'}\`\n\n` +
+            `- **상태**: \`${res.status || 'processed'}\`\n\n` +
             `대시보드 또는 콘솔에서 상태 변화를 확인하실 수 있습니다.`,
         };
       }
 
       if (toolName === 'qemu_delete' || toolName === 'lxc_delete') {
         return {
-          finalResponse: `🗑️ **VMID ${state.toolToCall.args.vmid} 삭제가 성공적으로 완료되었습니다.**\n\n- Task UPID: \`${res.upid}\``,
+          finalResponse: `### [VMID ${state.toolToCall.args.vmid} 삭제 완료]\n\n- Task UPID: \`${res.upid}\``,
         };
       }
 

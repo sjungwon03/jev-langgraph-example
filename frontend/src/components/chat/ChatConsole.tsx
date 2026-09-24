@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, ShieldAlert, Wrench, CheckCircle2, XCircle, Sparkles, Brain, ClipboardCheck } from 'lucide-react';
+import { Send, Terminal, User, ShieldAlert, CheckCircle2, XCircle, ChevronDown, ListFilter, Activity } from 'lucide-react';
 import { StreamChunk, confirmAction } from '@/lib/api';
 import { DecisionLogsModal } from './DecisionLogsModal';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { useUserRole } from '@/lib/role-context';
 
 interface Message {
@@ -35,20 +34,20 @@ interface Message {
 }
 
 export function ChatConsole() {
-  const { role, requesterName, department } = useUserRole();
+  const { role, requesterName } = useUserRole();
 
   const devPrompts = [
-    '🖥️ 프론트엔드 테스트용 VM 1대 요청해줘 (자원 신청 티켓 발급)',
-    '💾 101번 VM 디스크 20GB 증설 요청해줘',
-    '📋 내가 신청한 자원 요청 목록 보여줘',
-    '📦 실행 중인 가상머신 전체 목록 보여줘',
+    '테스트용 VM 발급 신청 (2C 4GB 20GB)',
+    '101번 VM 디스크 20GB 증설 요청',
+    '내 자원 요청 내역 조회',
+    '실행 중인 VM 목록',
   ];
 
   const infraPrompts = [
-    '📋 대기 중인 자원 요청 티켓 목록 보여줘',
-    '✅ REQ-1001 자원 요청 승인하고 프로비저닝해줘',
-    '🚀 104번 VM (staging-test-runner) 기동해줘',
-    '⚠️ 105번 컨테이너 삭제해줘 (보안 승인 테스트)',
+    '대기 중인 자원 요청 큐 조회',
+    'REQ-1001 자원 요청 승인',
+    '104번 VM 기동',
+    '105번 컨테이너 삭제 (보안 승인)',
   ];
 
   const quickPrompts = role === 'INFRA_TEAM' ? infraPrompts : devPrompts;
@@ -59,8 +58,8 @@ export function ChatConsole() {
       role: 'assistant',
       content:
         role === 'INFRA_TEAM'
-          ? '안녕하세요! **Proxmox MCP & LangGraph 인프라 관리자 AI 에이전트**입니다. 🛠️\n\n인프라팀 권한으로 접속되었습니다. 개발팀의 **자원 신청 티켓(REQ-XXXX) 검토/승인 및 자동 프로비저닝**, 클러스터 가상머신 제어, 자율 복구 작업을 수행할 수 있습니다.'
-          : '안녕하세요! **Proxmox MCP & LangGraph 개발팀 셀프서비스 AI 어시스턴트**입니다. 👨‍💻\n\n신규 가상머신(VM) 생성이나 디스크 증설이 필요하시면 자연어로 말씀해 주세요. **인프라팀 승인 티켓이 자동으로 작성 및 접수**됩니다!',
+          ? 'Proxmox VE 인프라 운영 콘솔입니다. 클러스터 자원 현황 조회, VM 전원 제어, 개발팀 자원 신청 티켓(REQ-XXXX) 심사 및 자동 배포를 수행할 수 있습니다.'
+          : '서비스 개발팀 인프라 셀프서비스 콘솔입니다. 필요한 서버 사양(CPU, RAM, Disk)과 용도를 입력하시면 인프라팀 승인 큐로 자원 요청서가 접수됩니다.',
     },
   ]);
   const [input, setInput] = useState('');
@@ -86,7 +85,7 @@ export function ChatConsole() {
     setMessages((prev) => [
       ...prev,
       { id: userMsgId, role: 'user', content: query },
-      { id: assistantMsgId, role: 'assistant', content: '', thought: '사고 및 계획 수립 중...' },
+      { id: assistantMsgId, role: 'assistant', content: '', thought: '의도 분석 및 실행 계획 수립 중...' },
     ]);
     setInput('');
     setIsStreaming(true);
@@ -171,7 +170,7 @@ export function ChatConsole() {
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMsgId
-            ? { ...msg, content: `❌ 오류가 발생했습니다: ${err.message}`, thought: undefined }
+            ? { ...msg, content: `작업 중 오류가 발생했습니다: ${err.message}`, thought: undefined }
             : msg,
         ),
       );
@@ -191,7 +190,7 @@ export function ChatConsole() {
             confirmation: undefined,
             content:
               msg.content +
-              `\n\n> 🛡️ **[승인 응답 결과]**: ${res.message || (approved ? '작업이 실행되었습니다.' : '취소되었습니다.')}`,
+              `\n\n> **[승인 처리 결과]**: ${res.message || (approved ? '작업이 실행되었습니다.' : '취소되었습니다.')}`,
           };
         }),
       );
@@ -201,34 +200,32 @@ export function ChatConsole() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950/40">
-      {/* Agent Header Toolbar with Decision Logs Button */}
-      <div className="flex items-center justify-between px-6 py-2.5 bg-slate-900/60 border-b border-slate-800 text-xs shrink-0">
-        <div className="flex items-center gap-2.5 text-slate-400">
-          <Bot className="w-4 h-4 text-emerald-400" />
-          <span className="font-medium text-slate-300">Proxmox VE AI 인프라 엔지니어</span>
-          <span className="text-[10px] text-slate-500 font-mono">• LangGraph StateGraph</span>
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950">
+      {/* Header Toolbar */}
+      <div className="flex items-center justify-between px-6 py-2.5 bg-slate-950 border-b border-slate-800/80 text-xs shrink-0">
+        <div className="flex items-center gap-2.5">
+          <span className="font-semibold text-slate-200">인프라 제어 콘솔</span>
+          <span className="text-[11px] text-slate-500 font-mono">• LangGraph Orchestration</span>
           <Badge
-            variant={role === 'INFRA_TEAM' ? 'warning' : 'info'}
-            className="text-[10px] py-0.5 px-2 font-mono gap-1"
+            variant={role === 'INFRA_TEAM' ? 'warning' : 'outline'}
+            className="text-[10px] py-0 px-2 font-mono"
           >
-            <ClipboardCheck className="w-3 h-3" />
-            {role === 'INFRA_TEAM' ? '인프라 관리팀 모드' : '개발팀 셀프서비스 모드'}
+            {role === 'INFRA_TEAM' ? '인프라팀' : '개발팀'}
           </Badge>
         </div>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => setIsDecisionModalOpen(true)}
-          className="flex items-center gap-1.5 bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border-purple-500/30 text-xs h-7"
+          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-800/80 h-7 px-2.5"
         >
-          <Brain className="w-3.5 h-3.5 text-purple-400" />
-          <span>AI 툴 판단 로그 (Reasoning Trace)</span>
+          <Activity className="w-3.5 h-3.5 text-slate-400" />
+          <span>실행 추적 로그</span>
         </Button>
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-5">
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -237,76 +234,68 @@ export function ChatConsole() {
             }`}
           >
             {msg.role === 'assistant' && (
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-slate-950 shrink-0 mt-1 shadow-md shadow-emerald-500/20">
-                <Bot className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-md bg-slate-900 border border-slate-700/80 flex items-center justify-center text-slate-300 shrink-0 mt-0.5">
+                <Terminal className="w-3.5 h-3.5 text-slate-300" />
               </div>
             )}
 
-            <div className="space-y-2 max-w-[85%]">
+            <div className="space-y-1.5 max-w-[88%]">
               {/* Message Bubble */}
               <div
-                className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                className={`p-3.5 rounded-xl text-xs leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-emerald-600 text-white rounded-tr-none shadow-md shadow-emerald-600/20'
-                    : 'glow-card rounded-tl-none border border-slate-800 text-slate-100'
+                    ? 'bg-slate-800/90 text-slate-100 rounded-tr-none border border-slate-700/60 shadow-sm'
+                    : 'bg-slate-900/50 rounded-tl-none border border-slate-800/90 text-slate-200'
                 }`}
               >
-                {/* Active Thought / Reasoning Badge */}
+                {/* Active Thought / Reasoning Indicator */}
                 {msg.thought && (
-                  <Badge variant="outline" className="flex items-center gap-2 mb-2 text-xs text-emerald-400 font-mono bg-emerald-500/10 border-emerald-500/20 px-2.5 py-1">
-                    <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                  <div className="flex items-center gap-2 mb-2 text-[11px] text-slate-400 font-mono bg-slate-950/70 border border-slate-800 px-2.5 py-1 rounded-md">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" />
                     <span>{msg.thought}</span>
-                  </Badge>
-                )}
-
-                {/* AI Decision Rationale Card */}
-                {msg.decision && (
-                  <Card className="mb-3 p-3 border-purple-500/30 bg-purple-950/20 space-y-1.5 text-xs font-sans">
-                    <div className="flex items-center justify-between text-purple-300 font-semibold">
-                      <span className="flex items-center gap-1.5 font-mono">
-                        <Brain className="w-3.5 h-3.5 text-purple-400" />
-                        AI 의사결정: {msg.decision.tool ? `[${msg.decision.tool}] 도구 호출` : '대화 응답'}
-                      </span>
-                      {msg.decision.latencyMs && (
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          추론 {msg.decision.latencyMs}ms
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-slate-200 leading-relaxed bg-slate-900/70 p-2 rounded-lg border border-purple-500/20">
-                      <strong className="text-purple-300">선택 이유: </strong>
-                      {msg.decision.why}
-                    </div>
-                    {msg.decision.safetyEvaluation && (
-                      <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-                        <span className="text-teal-400">보안 검증:</span> {msg.decision.safetyEvaluation}
-                      </div>
-                    )}
-                  </Card>
-                )}
-
-                {/* Tool calls execution details */}
-                {msg.toolCalls && msg.toolCalls.length > 0 && (
-                  <div className="space-y-1.5 mb-3">
-                    {msg.toolCalls.map((tc, idx) => (
-                      <div
-                        key={idx}
-                        className="text-xs bg-slate-900/90 rounded-lg p-2.5 border border-slate-800 font-mono space-y-1 text-slate-300"
-                      >
-                        <div className="flex items-center justify-between text-teal-400 font-semibold">
-                          <span className="flex items-center gap-1.5">
-                            <Wrench className="w-3.5 h-3.5 text-teal-400" /> MCP Tool: {tc.tool}
-                          </span>
-                          <Badge variant="success" className="text-[10px] py-0 px-1.5 font-mono">
-                            EXECUTED
-                          </Badge>
-                        </div>
-                        <div className="text-[11px] text-slate-400">
-                          Args: {JSON.stringify(tc.input)}
-                        </div>
-                      </div>
-                    ))}
                   </div>
+                )}
+
+                {/* Collapsible Execution Trace */}
+                {(msg.decision || (msg.toolCalls && msg.toolCalls.length > 0)) && (
+                  <details className="group mb-2.5 rounded-lg border border-slate-800/80 bg-slate-950/60 text-xs overflow-hidden">
+                    <summary className="flex items-center justify-between px-3 py-1.5 cursor-pointer hover:bg-slate-900/60 select-none text-slate-400 font-mono text-[11px]">
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <span>
+                          {msg.decision?.tool ? `실행: ${msg.decision.tool}()` : '의도 분석 완료'}
+                        </span>
+                        {msg.decision?.latencyMs && (
+                          <span className="text-slate-500 font-sans">
+                            • {msg.decision.latencyMs}ms
+                          </span>
+                        )}
+                      </div>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-open:rotate-180 transition-transform" />
+                    </summary>
+                    <div className="px-3 py-2.5 border-t border-slate-800/60 text-[11px] space-y-2 bg-slate-900/40 text-slate-300">
+                      {msg.decision?.why && (
+                        <div>
+                          <span className="text-slate-400 font-medium">판단 근거: </span>
+                          <span className="text-slate-300">{msg.decision.why}</span>
+                        </div>
+                      )}
+                      {msg.decision?.safetyEvaluation && (
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          보안 등급: {msg.decision.safetyEvaluation}
+                        </div>
+                      )}
+                      {msg.toolCalls?.map((tc, idx) => (
+                        <div
+                          key={idx}
+                          className="font-mono text-[10px] text-slate-300 bg-slate-950 p-2 rounded border border-slate-800 overflow-x-auto"
+                        >
+                          <div className="text-slate-400 font-semibold mb-0.5">도구 호출 인수:</div>
+                          <code>{JSON.stringify(tc.input, null, 2)}</code>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 )}
 
                 {/* Content Render */}
@@ -318,12 +307,12 @@ export function ChatConsole() {
 
                 {/* Human-in-the-loop Confirmation Card */}
                 {msg.confirmation && (
-                  <div className="mt-4 p-3.5 bg-amber-500/15 border border-amber-500/40 rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-amber-300 font-semibold text-xs">
-                      <ShieldAlert className="w-4 h-4 text-amber-400" />
-                      <span>보안 승인 요청 (Destructive Action Confirmation)</span>
+                  <div className="mt-3 p-3 bg-amber-950/20 border border-amber-800/50 rounded-lg space-y-2.5">
+                    <div className="flex items-center gap-2 text-amber-300 font-medium text-xs">
+                      <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>보안 승인 필요: 파괴적 작업 검증</span>
                     </div>
-                    <div className="text-xs text-slate-200">
+                    <div className="text-[11px] text-slate-300 leading-normal">
                       {msg.confirmation.description}
                     </div>
                     <div className="flex items-center gap-2 pt-1">
@@ -333,17 +322,17 @@ export function ChatConsole() {
                         onClick={() =>
                           handleConfirmApproval(msg.id, msg.confirmation!.token, true)
                         }
-                        className="flex items-center gap-1.5 text-xs font-semibold"
+                        className="flex items-center gap-1.5 text-xs h-7 px-3 font-medium"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> 최종 승인 및 실행
+                        <CheckCircle2 className="w-3.5 h-3.5" /> 승인 및 실행
                       </Button>
                       <Button
-                        variant="secondary"
+                        variant="outline"
                         size="sm"
                         onClick={() =>
                           handleConfirmApproval(msg.id, msg.confirmation!.token, false)
                         }
-                        className="flex items-center gap-1.5 text-xs font-medium"
+                        className="flex items-center gap-1.5 text-xs h-7 px-3 text-slate-400 border-slate-700 hover:text-white"
                       >
                         <XCircle className="w-3.5 h-3.5" /> 취소
                       </Button>
@@ -354,8 +343,8 @@ export function ChatConsole() {
             </div>
 
             {msg.role === 'user' && (
-              <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0 mt-1">
-                <User className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-md bg-slate-800 border border-slate-700/80 flex items-center justify-center text-slate-300 shrink-0 mt-0.5">
+                <User className="w-3.5 h-3.5" />
               </div>
             )}
           </div>
@@ -364,9 +353,9 @@ export function ChatConsole() {
       </div>
 
       {/* Quick Prompts Chips */}
-      <div className="px-6 py-2 border-t border-slate-800/60 bg-slate-950/80 flex items-center gap-2 overflow-x-auto">
-        <span className="text-xs text-slate-400 flex items-center gap-1 shrink-0 font-medium">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> 추천:
+      <div className="px-6 py-2 border-t border-slate-800/80 bg-slate-950 flex items-center gap-2 overflow-x-auto">
+        <span className="text-[11px] text-slate-500 flex items-center gap-1 shrink-0 font-medium">
+          <ListFilter className="w-3 h-3 text-slate-400" /> 추천:
         </span>
         {quickPrompts.map((p, idx) => (
           <Button
@@ -375,42 +364,44 @@ export function ChatConsole() {
             size="sm"
             onClick={() => handleSend(p)}
             disabled={isStreaming}
-            className="rounded-full text-xs text-slate-300 border-slate-800 hover:border-emerald-500/40 h-7 px-3 shrink-0"
+            className="rounded-md text-[11px] text-slate-300 border-slate-800 bg-slate-900/60 hover:bg-slate-800 hover:text-white h-6 px-2.5 shrink-0"
           >
             {p}
           </Button>
         ))}
       </div>
 
-      {/* Input bar */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950/90 backdrop-blur-md">
+      {/* Input area */}
+      <div className="p-4 border-t border-slate-800/80 bg-slate-950 shrink-0">
         <form
           onSubmit={(e) => {
             e.preventDefault();
             handleSend();
           }}
-          className="flex items-center gap-3 max-w-4xl mx-auto"
+          className="flex gap-2 max-w-4xl mx-auto"
         >
           <Input
-            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            placeholder={
+              role === 'INFRA_TEAM'
+                ? '인프라 명령 입력 (예: REQ-1001 승인, 104번 VM 시작, 105번 삭제)'
+                : '자원 요청서 작성 (예: 2코어 4기가 램 20GB 디스크로 웹서버 신청)'
+            }
             disabled={isStreaming}
-            placeholder="자연어로 인프라를 제어하세요 (예: 101번 VM 시작해줘, 노드 상태 알려줘...)"
-            className="h-11 px-4 text-sm"
+            className="flex-1 bg-slate-900/80 border-slate-800 text-slate-100 placeholder:text-slate-500 text-xs h-10 focus-visible:ring-1 focus-visible:ring-slate-600 focus-visible:border-slate-600 rounded-lg"
           />
           <Button
             type="submit"
-            disabled={!input.trim() || isStreaming}
-            className="h-11 px-5 flex items-center gap-2 font-semibold shadow-md shadow-emerald-500/10"
+            disabled={isStreaming || !input.trim()}
+            className="bg-slate-100 hover:bg-white text-slate-900 font-semibold px-4 h-10 rounded-lg text-xs transition-colors shrink-0"
           >
-            <Send className="w-4 h-4 fill-current" />
-            <span>전송</span>
+            <Send className="w-3.5 h-3.5 mr-1" /> 전송
           </Button>
         </form>
       </div>
 
-      {/* AI Decision Logs Modal */}
+      {/* Decision Logs Modal */}
       <DecisionLogsModal
         isOpen={isDecisionModalOpen}
         onClose={() => setIsDecisionModalOpen(false)}
