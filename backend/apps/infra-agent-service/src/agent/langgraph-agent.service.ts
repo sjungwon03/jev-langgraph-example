@@ -135,7 +135,7 @@ export class LangGraphAgentService {
         this.logger.warn(`Could not initialize ChatOpenAI: ${err.message}`);
       }
     } else {
-      this.logger.log('LLM API key not provided. Hybrid Intent Router will handle natural language.');
+      this.logger.warn('⚠️ LLM API key not provided. LLM is required for conversational actions (Built-in NLU fallback removed).');
     }
 
     // 2. Build LangGraph StateGraph
@@ -218,6 +218,37 @@ export class LangGraphAgentService {
     return this.pendingConfirmations.delete(token);
   }
 
+  /**
+   * Helper: Formats the guidance message when no LLM is connected.
+   */
+  private getLlmNotConnectedMessage(): string {
+    return (
+      `⚠️ **LLM(대형 언어 모델)이 연결되어 있지 않습니다.**\n\n` +
+      `자연어 기반 Proxmox 인프라 제어 및 질의응답을 사용하려면 **실제 LLM 연결**이 필요합니다.\n` +
+      `*(내장된 규칙/패턴 기반 임시 지능형 모드가 비활성화되었습니다.)*\n\n` +
+      `---\n\n` +
+      `### ⚙️ LLM 연결 방법 안내\n\n` +
+      `\`infra/docker-compose.yml\` 파일의 \`infra-agent-service\` 환경변수 또는 프로젝트 루트 \`.env\`에 다음 설정을 추가해주세요:\n\n` +
+      `#### 1. OpenAI (또는 호환 클라우드 LLM)\n` +
+      `\`\`\`yaml\n` +
+      `environment:\n` +
+      `  - LLM_API_KEY=sk-...                  # OpenAI API 키\n` +
+      `  - LLM_MODEL=gpt-4o-mini               # 사용할 모델명 (기본값: gpt-4o-mini)\n` +
+      `\`\`\`\n\n` +
+      `#### 2. 로컬 LLM (Ollama, vLLM, DeepSeek, LocalAI 등)\n` +
+      `\`\`\`yaml\n` +
+      `environment:\n` +
+      `  - LLM_API_KEY=ollama-local             # 임의의 API 키 또는 토큰\n` +
+      `  - LLM_BASE_URL=http://<host>:11434/v1  # 로컬 LLM 엔드포인트 URL\n` +
+      `  - LLM_MODEL=llama3                    # 사용할 모델명\n` +
+      `\`\`\`\n\n` +
+      `설정 저장 후 아래 명령어로 에이전트 서비스를 재시작하세요:\n` +
+      `\`\`\`bash\n` +
+      `docker compose restart infra-agent-service\n` +
+      `\`\`\``
+    );
+  }
+
   // --- LangGraph Workflow Nodes ---
 
   /**
@@ -230,12 +261,21 @@ export class LangGraphAgentService {
     this.logger.debug(`Router Node input: "${text}"`);
     const userRole = state.role || 'DEV_TEAM';
     const requester = state.requesterName || '김개발';
-    const normalized = text.toLowerCase();
+    // 1. If LLM is NOT connected, do NOT use any built-in intelligent fallback
+    if (!this.llm) {
+      this.logger.warn(`No LLM connected. Returning connection guide to user.`);
+      return {
+        intent: 'llm_not_connected',
+        decisionWhy: 'LLM(대형 언어 모델)이 연결되어 있지 않아 자연어 분석을 수행하지 않고 연결 안내 메시지를 반환합니다.',
+        safetyEvaluation: 'SAFE',
+        toolToCall: null,
+        finalResponse: this.getLlmNotConnectedMessage(),
+      };
+    }
 
-    // 1. If LLM is configured (OpenAI / OpenAI-compatible / local LLM), let LLM reason and extract parameters
-    if (this.llm) {
-      try {
-        const systemPrompt = `당신은 Proxmox VE 가상화 인프라를 자율 관리하는 지능형 AI 에이전트(LangGraph StateGraph Router)입니다.
+    // 2. When LLM IS configured: use LLM reasoning to determine intent and tool call
+    try {
+      const systemPrompt = `당신은 Proxmox VE 가상화 인프라를 자율 관리하는 지능형 AI 에이전트(LangGraph StateGraph Router)입니다.
 사용자의 자연어 메시지를 심층 분석하여 의도를 파악하고, 필요한 Proxmox 도구 및 실행 인수(Arguments)를 추론하여 정확히 바인딩하세요.
 
 [현재 세션 정보]
@@ -257,6 +297,22 @@ export class LangGraphAgentService {
    - 'REQ-XXXX 반려' 요청은 'review_resource_request' (status: 'REJECTED')를 호출하세요.
    - VM 전원 제어(qemu_start, qemu_shutdown, qemu_reboot)나 삭제(qemu_delete), 강제종료(qemu_force_stop)를 직접 실행할 수 있습니다.
 
+[사용 가능한 도구 목록 (Available Tools)]
+- list_nodes: 클러스터 노드 목록 및 CPU/메모리/업타임 상태 조회 (args: {})
+- cluster_resources: 클러스터 내 전체 VM, LXC 컨테이너 및 상태 목록 조회 (args: { type?: 'vm' })
+- list_resource_requests: 개발팀 자원 신청 대기열 및 처리 이력 목록 조회 (args: { status?: 'PENDING'|'APPROVED'|'REJECTED'|'PROVISIONED' })
+- create_resource_request: 개발팀 자원 신청 티켓 생성 (args: { title: string, reason: string, type: 'CREATE_VM'|'RESIZE_DISK'|'DELETE_VM', spec?: { cores?: number, memory?: number, disk?: number|string, type?: 'qemu'|'lxc', name?: string, node?: string, vmid?: number } })
+- review_resource_request: 인프라팀 자원 신청 승인 또는 반려 (args: { id: string, status: 'APPROVED'|'REJECTED', reviewerComment?: string, targetNode?: string })
+- qemu_start: VM 기동 (args: { node: string, vmid: number })
+- qemu_shutdown: VM ACPI 정상 종료 (args: { node: string, vmid: number })
+- qemu_reboot: VM 재부팅 (args: { node: string, vmid: number })
+- qemu_force_stop: VM 강제 종료 [고위험 보안승인필요] (args: { node: string, vmid: number })
+- qemu_delete: VM 영구 삭제 [고위험 보안승인필요] (args: { node: string, vmid: number })
+- qemu_snapshot_list: VM 스냅샷 목록 조회 (args: { node: string, vmid: number })
+- qemu_snapshot_create: VM 스냅샷 생성 (args: { node: string, vmid: number, snapname: string, description?: string })
+- qemu_resize_disk: VM 디스크 크기 확장 (args: { node: string, vmid: number, disk?: string, size: string })
+- get_storage: 노드별 스토리지 목록 및 잔여 용량 조회 (args: { node?: string })
+
 [반환 형식]
 반드시 아래 JSON 스키마를 만족하는 유효한 JSON 문자열만 출력하세요(코드블록, 주석 없이):
 {
@@ -267,413 +323,41 @@ export class LangGraphAgentService {
     "name": "도구명",
     "args": { ...도구별 인수... }
   }
-}`;
+}
+* 만약 도구 호출이 필요 없는 일반 질문이나 인사말인 경우 "toolToCall": null 로 설정하세요.`;
 
-        const llmResponse = await this.llm.invoke([
-          new SystemMessage(systemPrompt),
-          new HumanMessage(text),
-        ]);
+      const llmResponse = await this.llm.invoke([
+        new SystemMessage(systemPrompt),
+        new HumanMessage(text),
+      ]);
 
-        const raw = typeof llmResponse.content === 'string' ? llmResponse.content : JSON.stringify(llmResponse.content);
-        const jsonMatch = raw.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (parsed && parsed.intent) {
-            this.logger.log(`🤖 LLM Reasoning Decision: intent=${parsed.intent}, tool=${parsed.toolToCall?.name}`);
-            return parsed;
-          }
+      const raw = typeof llmResponse.content === 'string' ? llmResponse.content : JSON.stringify(llmResponse.content);
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed && parsed.intent) {
+          this.logger.log(`🤖 LLM Reasoning Decision: intent=${parsed.intent}, tool=${parsed.toolToCall?.name}`);
+          return parsed;
         }
-      } catch (err: any) {
-        this.logger.warn(`LLM invocation error: ${err.message}. Falling back to Intelligent NLU Router.`);
-      }
-    }
-
-    // 2. Intelligent Hybrid NLU Router (Used offline or as high-speed deterministic fallback)
-    // Check for VMID pattern (e.g. "101번", "vm 101", "101")
-    const vmidMatch = text.match(/(?:vm|vmid|\#)?\s*(\d{3,4})/i);
-    const targetVmid = vmidMatch ? parseInt(vmidMatch[1], 10) : 101;
-
-    // Intelligent spec extraction from natural language
-    const coreMatch = text.match(/(\d+)\s*(?:코어|core|cores|cpus?|c\b)/i);
-    const memGbMatch =
-      text.match(/(\d+)\s*(?:gb|기가|g\b|gib)\s*(?:램|ram|메모리|memory)/i) ||
-      text.match(/(?:램|ram|메모리|memory)\s*(\d+)\s*(?:gb|기가|g\b|gib)?/i);
-    const memMbMatch =
-      text.match(/(\d+)\s*(?:mb|메가|m\b|mib)\s*(?:램|ram|메모리|memory)/i) ||
-      text.match(/(?:램|ram|메모리|memory)\s*(\d+)\s*(?:mb|메가|m\b|mib)?/i);
-    const diskExplicitMatch =
-      text.match(/(\d+)\s*(?:gb|기가|g\b)\s*(?:디스크|disk|스토리지|용량|ssd|hdd)/i) ||
-      text.match(/(?:디스크|disk|스토리지|용량|ssd|hdd)\s*(\d+)\s*(?:gb|기가|g\b)?/i);
-
-    const allGigaMatches = Array.from(text.matchAll(/(\d+)\s*(?:gb|기가|g\b)/gi)).map((m) =>
-      parseInt(m[1], 10),
-    );
-
-    let extractedCores = coreMatch ? parseInt(coreMatch[1], 10) : 0;
-    let extractedMem = memGbMatch
-      ? parseInt(memGbMatch[1], 10) * 1024
-      : memMbMatch
-        ? parseInt(memMbMatch[1], 10)
-        : allGigaMatches.length > 0
-          ? allGigaMatches[0] * 1024
-          : 0;
-
-    let extractedDisk = diskExplicitMatch
-      ? parseInt(diskExplicitMatch[1], 10)
-      : allGigaMatches.length > 1
-        ? allGigaMatches[1]
-        : 0;
-
-    // Contextual workload sizing if parameters are not explicitly mentioned
-    let inferredCategory = '일반 워크로드';
-    if (!extractedCores || !extractedMem) {
-      if (
-        normalized.includes('ai') ||
-        normalized.includes('머신러닝') ||
-        normalized.includes('딥러닝') ||
-        normalized.includes('대용량') ||
-        normalized.includes('llm') ||
-        normalized.includes('학습')
-      ) {
-        extractedCores = extractedCores || 8;
-        extractedMem = extractedMem || 16384;
-        extractedDisk = extractedDisk || 100;
-        inferredCategory = '고성능 AI/ML 워크로드 (8C / 16GB / 100GB)';
-      } else if (
-        normalized.includes('db') ||
-        normalized.includes('데이터베이스') ||
-        normalized.includes('postgres') ||
-        normalized.includes('mysql') ||
-        normalized.includes('redis') ||
-        normalized.includes('캐시')
-      ) {
-        extractedCores = extractedCores || 4;
-        extractedMem = extractedMem || 8192;
-        extractedDisk = extractedDisk || 50;
-        inferredCategory = '데이터베이스/캐시 워크로드 (4C / 8GB / 50GB)';
-      } else if (
-        normalized.includes('테스트') ||
-        normalized.includes('웹') ||
-        normalized.includes('프론트') ||
-        normalized.includes('경량') ||
-        normalized.includes('가벼운') ||
-        normalized.includes('간단')
-      ) {
-        extractedCores = extractedCores || 2;
-        extractedMem = extractedMem || 4096;
-        extractedDisk = extractedDisk || 30;
-        inferredCategory = '경량 웹/테스트 워크로드 (2C / 4GB / 30GB)';
-      } else {
-        extractedCores = extractedCores || 4;
-        extractedMem = extractedMem || 8192;
-        extractedDisk = extractedDisk || 50;
-        inferredCategory = '표준 범용 인스턴스 (4C / 8GB / 50GB)';
-      }
-    } else {
-      extractedDisk = extractedDisk || 50;
-      inferredCategory = `사용자 지정 사양 (${extractedCores}C / ${Math.round(extractedMem / 1024)}GB / ${extractedDisk}GB)`;
-    }
-
-    // 0. INFRA_TEAM: Resource Request Approval & Queue Management
-    if (userRole === 'INFRA_TEAM') {
-      if (
-        normalized.includes('자원 요청') ||
-        normalized.includes('요청 현황') ||
-        normalized.includes('요청 목록') ||
-        normalized.includes('대기 중인 요청') ||
-        normalized.includes('결재')
-      ) {
-        return {
-          intent: 'list_resource_requests',
-          decisionWhy: `인프라팀(Infra Team) 관리자 권한 확인: 개발팀의 자원 요청 큐 목록 조회를 위해 list_resource_requests 도구를 실행합니다.`,
-          safetyEvaluation: 'SAFE - 인프라 관리자 자원 요청 대기열 조회입니다.',
-          toolToCall: { name: 'list_resource_requests', args: {} },
-        };
       }
 
-      const reqMatch = text.match(/REQ-\d{4}/i);
-      if (reqMatch && (normalized.includes('승인') || normalized.includes('approve'))) {
-        const reqId = reqMatch[0].toUpperCase();
-        return {
-          intent: 'approve_resource_request',
-          decisionWhy: `인프라 관리자의 승인 결정에 따라 자원 요청 [${reqId}] 승인 및 Proxmox 자동 프로비저닝을 연계 실행합니다.`,
-          safetyEvaluation: 'SAFE - 인프라 관리자의 승인 검토 완료 건으로 자동 프로비저닝을 시작합니다.',
-          toolToCall: {
-            name: 'review_resource_request',
-            args: { id: reqId, status: 'APPROVED', reviewerComment: '인프라팀 AI 챗봇에서 검토 및 승인 처리됨' },
-          },
-        };
-      }
-
-      if (reqMatch && (normalized.includes('반려') || normalized.includes('거절') || normalized.includes('reject'))) {
-        const reqId = reqMatch[0].toUpperCase();
-        return {
-          intent: 'reject_resource_request',
-          decisionWhy: `인프라 관리자의 반려 결정에 따라 자원 요청 [${reqId}] 반려 처리를 진행합니다.`,
-          safetyEvaluation: 'SAFE - 인프라 관리자의 반려 결정입니다.',
-          toolToCall: {
-            name: 'review_resource_request',
-            args: { id: reqId, status: 'REJECTED', reviewerComment: '인프라 관리자에 의한 반려 처리' },
-          },
-        };
-      }
-    }
-
-    // 0. DEV_TEAM: Resource Request Governance (VM creation/deletion/resizing routed to approval queue)
-    if (userRole === 'DEV_TEAM') {
-      if (
-        normalized.includes('생성') ||
-        normalized.includes('만들') ||
-        normalized.includes('배포') ||
-        normalized.includes('발급') ||
-        normalized.includes('신규') ||
-        normalized.includes('신청') ||
-        normalized.includes('요청') ||
-        normalized.includes('서버 하나') ||
-        normalized.includes('서버 한 대') ||
-        normalized.includes('서버 1대') ||
-        normalized.includes('증설') ||
-        normalized.includes('확장') ||
-        normalized.includes('늘려') ||
-        normalized.includes('삭제')
-      ) {
-        const isDelete = normalized.includes('삭제') || normalized.includes('제거') || normalized.includes('반납');
-        const isResize = !isDelete && (normalized.includes('증설') || normalized.includes('확장') || normalized.includes('늘려') || normalized.includes('추가'));
-        const reqType = isDelete ? 'DELETE_VM' : isResize ? 'RESIZE_DISK' : 'CREATE_VM';
-        const isLxc = normalized.includes('lxc') || normalized.includes('컨테이너');
-
-        return {
-          intent: 'create_resource_request',
-          decisionWhy: `AI 자연어 심층 분석: 사용자 발화("${text}")에서 ${inferredCategory} 요구사항을 판별했습니다. 개발팀 거버넌스 정책에 따라 클러스터 직접 변경 대신 인프라팀에 자원 요청서(Resource Request)를 자동 작성하여 제출합니다.`,
-          safetyEvaluation: 'GOVERNANCE - 개발팀 인프라 변경 작업이 자원 승인 큐로 안전하게 전달됩니다.',
-          toolToCall: {
-            name: 'create_resource_request',
-            args: {
-              title: isDelete
-                ? `VMID ${targetVmid} 인스턴스 삭제 승인 요청`
-                : isResize
-                  ? `VMID ${targetVmid} 스토리지 디스크 용량 확장 요청`
-                  : `개발팀 신규 VM 인프라 발급 요청 (${text})`,
-              requesterName: requester,
-              department: '서비스개발팀',
-              type: reqType,
-              reason: text,
-              spec: {
-                vmid: targetVmid,
-                name: `dev-vm-${Date.now().toString().slice(-4)}`,
-                cores: extractedCores,
-                memory: extractedMem,
-                disk: isResize ? (text.match(/\+(\d+)[gG]?/) ? text.match(/\+(\d+)[gG]?/)![0] : `+${extractedDisk}G`) : extractedDisk,
-                type: isLxc ? 'lxc' : 'qemu',
-              },
-            },
-          },
-        };
-      }
-    }
-
-    // 1. Destructive Operations (Requires Safety Gate)
-    if (
-      normalized.includes('삭제') ||
-      normalized.includes('delete') ||
-      normalized.includes('제거') ||
-      normalized.includes('destroy')
-    ) {
       return {
-        intent: 'destructive_delete',
-        decisionWhy: `사용자 입력 "${text}"에서 인스턴스 영구 삭제 의도 및 대상 VMID ${targetVmid}를 식별하여 qemu_delete 도구를 선택했습니다.`,
-        safetyEvaluation: 'CAUTION - 파괴적(Destructive) 삭제 작업으로 분류되어 Human-in-the-Loop 보안 승인 게이트를 호출합니다.',
-        toolToCall: {
-          name: 'qemu_delete',
-          args: { node: 'pve-node-01', vmid: targetVmid },
-        },
+        intent: 'general_chat',
+        decisionWhy: 'LLM 일반 응답 (도구 호출 불필요)',
+        safetyEvaluation: 'SAFE',
+        toolToCall: null,
+      };
+    } catch (err: any) {
+      this.logger.error(`LLM invocation error: ${err.message}`);
+      return {
+        intent: 'llm_error',
+        decisionWhy: `LLM 호출 중 오류 발생: ${err.message}`,
+        safetyEvaluation: 'SAFE',
+        toolToCall: null,
+        finalResponse: `❌ **LLM 호출 오류가 발생했습니다.**\n\n> **오류 메시지**: \`${err.message}\`\n\n설정된 \`LLM_API_KEY\` 또는 \`LLM_BASE_URL\`을 확인해주세요.`,
       };
     }
 
-    if (
-      normalized.includes('강제종료') ||
-      normalized.includes('강제 종료') ||
-      normalized.includes('force stop') ||
-      normalized.includes('forcestop')
-    ) {
-      return {
-        intent: 'destructive_force_stop',
-        decisionWhy: `사용자 입력 "${text}"에서 비정상 프로세스 강제 종료 의도 및 대상 VMID ${targetVmid}를 식별하여 qemu_force_stop 도구를 선택했습니다.`,
-        safetyEvaluation: 'CAUTION - 인스턴스 데이터 유실 위험이 있는 강제 종료 작업으로 분류되어 보안 승인 토큰을 발급합니다.',
-        toolToCall: {
-          name: 'qemu_force_stop',
-          args: { node: 'pve-node-01', vmid: targetVmid },
-        },
-      };
-    }
-
-    // 2. VM/Container Creation
-    if (
-      normalized.includes('생성') ||
-      normalized.includes('만들') ||
-      normalized.includes('create vm') ||
-      normalized.includes('신규')
-    ) {
-      const isLxc = normalized.includes('lxc') || normalized.includes('컨테이너');
-      const toolName = isLxc ? 'lxc_create' : 'qemu_create';
-      const allocatedVmid = targetVmid && targetVmid !== 101 ? targetVmid : Math.floor(106 + Math.random() * 50);
-      return {
-        intent: 'create_instance',
-        decisionWhy: `사용자 입력 "${text}"에서 새 ${isLxc ? 'LXC 컨테이너' : 'QEMU 가상머신'} 배포 의도를 분석하여 ${toolName} 도구를 선택하고 기본 리소스를 설정했습니다.`,
-        safetyEvaluation: 'SAFE - 신규 인스턴스 프로비저닝 작업으로 비파괴 작업으로 분류되어 즉시 실행 허용되었습니다.',
-        toolToCall: {
-          name: toolName,
-          args: {
-            node: 'pve-node-01',
-            vmid: allocatedVmid,
-            name: `vm-ai-auto-${Date.now().toString().slice(-4)}`,
-            cpus: 2,
-            memory: 4096,
-            diskSize: 40,
-          },
-        },
-      };
-    }
-
-    // 3. Snapshot Management
-    if (normalized.includes('스냅샷') || normalized.includes('snapshot')) {
-      if (normalized.includes('목록') || normalized.includes('리스트') || normalized.includes('list')) {
-        return {
-          intent: 'snapshot_list',
-          decisionWhy: `사용자 입력 "${text}"에서 VM ${targetVmid}의 스냅샷 이력 조회 의도를 확인하여 qemu_snapshot_list 도구를 선택했습니다.`,
-          safetyEvaluation: 'SAFE - 읽기 전용 스냅샷 조회 작업입니다.',
-          toolToCall: {
-            name: 'qemu_snapshot_list',
-            args: { node: 'pve-node-01', vmid: targetVmid },
-          },
-        };
-      }
-      return {
-        intent: 'snapshot_create',
-        decisionWhy: `사용자 입력 "${text}"에서 상태 보존 스냅샷 생성 의도 및 대상 VMID ${targetVmid}를 식별하여 qemu_snapshot_create 도구를 선택했습니다.`,
-        safetyEvaluation: 'SAFE - 인프라 상태 백업 작업으로 안전한 작업입니다.',
-        toolToCall: {
-          name: 'qemu_snapshot_create',
-          args: {
-            node: 'pve-node-01',
-            vmid: targetVmid,
-            snapname: `snap-${Date.now().toString().slice(-6)}`,
-            description: 'AI Agent Auto Snapshot',
-          },
-        },
-      };
-    }
-
-    // 4. Storage & Disk Resize
-    if (normalized.includes('디스크 늘려') || normalized.includes('디스크 증설') || normalized.includes('resize')) {
-      return {
-        intent: 'resize_disk',
-        decisionWhy: `사용자 입력 "${text}"에서 가상 디스크 용량 증설 의도를 감지하여 qemu_resize_disk 도구를 선택하고 +10G 증설 인수를 바인딩했습니다.`,
-        safetyEvaluation: 'SAFE - 무중단 온라인 디스크 확장 작업으로 안전한 작업입니다.',
-        toolToCall: {
-          name: 'qemu_resize_disk',
-          args: {
-            node: 'pve-node-01',
-            vmid: targetVmid,
-            disk: 'scsi0',
-            size: '+10G',
-          },
-        },
-      };
-    }
-
-    // 5. Lifecycle Operations (Start, Stop, Reboot)
-    if (
-      normalized.includes('시작') ||
-      normalized.includes('켜') ||
-      normalized.includes('start') ||
-      normalized.includes('부팅')
-    ) {
-      return {
-        intent: 'vm_start',
-        decisionWhy: `사용자 입력 "${text}"에서 인스턴스 전원 기동 의도 및 대상 VMID ${targetVmid}를 감지하여 qemu_start 도구를 호출하도록 결정했습니다.`,
-        safetyEvaluation: 'SAFE - 인스턴스 정상 가동 작업으로 즉시 실행 허용되었습니다.',
-        toolToCall: {
-          name: 'qemu_start',
-          args: { node: 'pve-node-01', vmid: targetVmid },
-        },
-      };
-    }
-
-    if (
-      normalized.includes('종료') ||
-      normalized.includes('꺼') ||
-      normalized.includes('stop') ||
-      normalized.includes('shutdown')
-    ) {
-      return {
-        intent: 'vm_shutdown',
-        decisionWhy: `사용자 입력 "${text}"에서 인스턴스 정상 ACPI 셧다운 의도 및 대상 VMID ${targetVmid}를 감지하여 qemu_shutdown 도구를 선택했습니다.`,
-        safetyEvaluation: 'SAFE - 정상적인 Graceful ACPI 셧다운 작업입니다.',
-        toolToCall: {
-          name: 'qemu_shutdown',
-          args: { node: 'pve-node-01', vmid: targetVmid },
-        },
-      };
-    }
-
-    if (
-      normalized.includes('재부팅') ||
-      normalized.includes('다시 시작') ||
-      normalized.includes('reboot') ||
-      normalized.includes('restart')
-    ) {
-      return {
-        intent: 'vm_reboot',
-        decisionWhy: `사용자 입력 "${text}"에서 인스턴스 소프트 리부트 의도 및 대상 VMID ${targetVmid}를 확인하여 qemu_reboot 도구를 호출하도록 설정했습니다.`,
-        safetyEvaluation: 'SAFE - 인스턴스 재부팅 작업입니다.',
-        toolToCall: {
-          name: 'qemu_reboot',
-          args: { node: 'pve-node-01', vmid: targetVmid },
-        },
-      };
-    }
-
-    // 6. Cluster Status & Resources Query
-    if (
-      normalized.includes('노드') ||
-      normalized.includes('node') ||
-      normalized.includes('호스트')
-    ) {
-      return {
-        intent: 'list_nodes',
-        decisionWhy: `사용자 입력 "${text}"에서 클러스터 물리 노드 및 상태 정보 질의 의도를 분석하여 list_nodes 도구를 선택했습니다.`,
-        safetyEvaluation: 'SAFE - 읽기 전용 클러스터 노드 쿼리입니다.',
-        toolToCall: { name: 'list_nodes', args: {} },
-      };
-    }
-
-    if (
-      normalized.includes('vm') ||
-      normalized.includes('가상머신') ||
-      normalized.includes('목록') ||
-      normalized.includes('리스트') ||
-      normalized.includes('상태') ||
-      normalized.includes('현황') ||
-      normalized.includes('클러스터') ||
-      normalized.includes('자원') ||
-      normalized.includes('리소스')
-    ) {
-      return {
-        intent: 'cluster_resources',
-        decisionWhy: `사용자 입력 "${text}"에서 전체 가상머신 및 자원 인벤토리 조회 의도를 감지하여 cluster_resources 도구를 선택했습니다.`,
-        safetyEvaluation: 'SAFE - 읽기 전용 인벤토리 쿼리입니다.',
-        toolToCall: { name: 'cluster_resources', args: {} },
-      };
-    }
-
-    // Default conversational chat
-    return {
-      intent: 'general_chat',
-      decisionWhy: `사용자 입력 "${text}"는 특정 인프라 제어 명령어가 아니므로 일반 안내 및 대화 모드로 전환했습니다.`,
-      safetyEvaluation: 'SAFE - 일반 질의응답 대화입니다.',
-      toolToCall: null,
-    };
   }
 
   /**
@@ -731,7 +415,12 @@ export class LangGraphAgentService {
    * 4. Synthesizer Node: Format friendly user-facing markdown response
    */
   private async synthesizerNode(state: typeof InfraAgentState.State) {
-    // If confirmation is required, format approval request card
+    // 1. If finalResponse is already set (e.g. LLM not connected guide, direct error), return it
+    if (state.finalResponse) {
+      return { finalResponse: state.finalResponse };
+    }
+
+    // 2. If confirmation is required, format approval request card
     if (state.confirmationNeeded) {
       const conf = state.confirmationNeeded;
       const resp = `⚠️ **[보안 승인 필요 (Human-in-the-Loop)]**\n\n` +
@@ -744,208 +433,42 @@ export class LangGraphAgentService {
       return { finalResponse: resp };
     }
 
-    // 4-1. When LLM is active, delegate actual conversational response & dialog processing to LLM
+    // 3. When LLM is active, delegate actual conversational response to LLM
     if (this.llm) {
       try {
         const lastMsg = state.messages[state.messages.length - 1];
         const userPrompt = typeof lastMsg?.content === 'string' ? lastMsg.content : '';
         const toolInfo = state.toolToCall
-          ? `[JEV 도구 실행 내역]\n- 도구명: ${state.toolToCall.name}\n- 입력 인수: ${JSON.stringify(state.toolToCall.args)}\n- 실행 결과: ${JSON.stringify(state.toolResult)}`
-          : '[도구 실행 없음 (일반 안내 대화)]';
+          ? `[Proxmox 도구 실행 내역]\n- 도구명: ${state.toolToCall.name}\n- 입력 인수: ${JSON.stringify(state.toolToCall.args)}\n- 실행 결과: ${JSON.stringify(state.toolResult)}`
+          : '[도구 실행 없음 (일반 대화 및 문의)]';
 
-        const systemPrompt = `당신은 Proxmox VE 가상화 인프라 전문 대화형 어시스턴트입니다.
-JEV 인프라 제어 프레임워크가 툴 콜링(Tool Calling)과 가드레일(Guardrails) 검증 및 원격 실행을 완료하였습니다.
-당신(LLM)의 핵심 책무는 사용자의 요청과 도구 실행 결과를 바탕으로 친절하고 자연스러운 한국어 대화 응답을 작성하는 것입니다.
+        const systemPrompt = `당신은 Proxmox VE 가상화 인프라 전담 AI 어시스턴트입니다.
+사용자의 요청과 도구 실행 결과를 바탕으로 친절하고 자연스러운 한국어 마크다운 대화 응답을 작성하세요.
 - 작업이 성공했다면 결과의 핵심 내용(스펙, 노드, VMID, 승인 번호 등)을 읽기 쉬운 마크다운(표 또는 글머리 기호)으로 요약하여 답변하세요.
-- 사용자에게 다음 가능한 액션을 자연스럽게 안내하세요.
+- 오류가 발생했다면 원인과 해결 방안을 명확히 안내하세요.
 ${toolInfo}`;
 
         const llmResp = await this.llm.invoke([
           new SystemMessage(systemPrompt),
           new HumanMessage(userPrompt || '결과를 요약해 줘'),
         ]);
-        const content = typeof llmResp.content === 'string' ? llmResp.content : JSON.stringify(llmResp.content);
-        if (content && content.trim().length > 0) {
-          return { finalResponse: content.trim() };
+        const resContent = typeof llmResp.content === 'string' ? llmResp.content : JSON.stringify(llmResp.content);
+        if (resContent && resContent.trim().length > 0) {
+          return { finalResponse: resContent.trim() };
         }
       } catch (err: any) {
-        this.logger.warn(`LLM conversational dialog synthesis failed, falling back to JEV rule synthesizer: ${err.message}`);
+        this.logger.error(`LLM conversational dialog synthesis failed: ${err.message}`);
+        return {
+          finalResponse: state.toolResult
+            ? `✅ **도구 실행 결과 (${state.toolToCall?.name})**\n\n\`\`\`json\n${JSON.stringify(state.toolResult, null, 2)}\n\`\`\`\n\n*(주의: LLM 대화 합성 중 오류 발생: ${err.message})*`
+            : `❌ **LLM 응답 생성 실패**: ${err.message}`,
+        };
       }
     }
 
-    // 4-2. JEV Fallback Rule Synthesizer: When LLM is offline or unconfigured
-    if (state.toolToCall && state.toolResult) {
-      const toolName = state.toolToCall.name;
-      const res = state.toolResult;
-
-      if (res.error) {
-        return {
-          finalResponse: `❌ **작업 실패**: Proxmox 작업 중 오류가 발생했습니다.\n> ${res.error}`,
-        };
-      }
-
-      if (toolName === 'create_resource_request') {
-        const req = res;
-        return {
-          finalResponse:
-            `### [개발팀 자원 요청서 접수 완료: ${req.id}]\n\n` +
-            `인프라 안정성 및 거버넌스 정책에 따라 **인프라팀 승인 큐**로 정상 접수되었습니다.\n\n` +
-            `| 항목 | 세부 내용 |\n` +
-            `| :--- | :--- |\n` +
-            `| **요청 번호** | \`${req.id}\` |\n` +
-            `| **요청 유형** | \`${req.type}\` |\n` +
-            `| **신청자 / 부서** | **${req.requesterName}** (${req.department}) |\n` +
-            `| **신청 사유** | ${req.reason} |\n` +
-            `| **도출 사양** | CPU ${req.spec?.cores || 4} Cores / RAM ${req.spec?.memory >= 1024 ? Math.round(req.spec.memory / 1024) + ' GB' : (req.spec?.memory || 4096) + ' MB'} / Disk ${req.spec?.disk || 50} GB |\n` +
-            `| **진행 상태** | 승인 대기 중 (PENDING) |\n\n` +
-            `> **안내**: 인프라팀 엔지니어가 클러스터 용량을 검토한 후 승인하면 Proxmox VE에 자동으로 배포됩니다. 상단 **[자원 요청 센터]** 메뉴에서 진행 상황을 확인하실 수 있습니다.`,
-        };
-      }
-
-      if (toolName === 'list_resource_requests') {
-        const list = Array.isArray(res) ? res : [];
-        let table = `### 자원 요청 대기 및 처리 현황 (${list.length}건)\n\n`;
-        table += `| 요청 ID | 제목 | 신청자 | 부서 | 유형 | 상태 | 등록일시 |\n`;
-        table += `| :---: | :--- | :---: | :---: | :---: | :---: | :---: |\n`;
-        for (const r of list) {
-          const statusBadge =
-            r.status === 'PENDING'
-              ? '대기중'
-              : r.status === 'PROVISIONED'
-                ? '배포완료'
-                : r.status === 'APPROVED'
-                  ? '승인됨'
-                  : '반려';
-          table += `| \`${r.id}\` | **${r.title}** | ${r.requesterName} | ${r.department} | \`${r.type}\` | ${statusBadge} | ${new Date(r.createdAt).toLocaleTimeString()} |\n`;
-        }
-        table += `\n> 특정 요청을 승인 또는 반려하려면 *"REQ-1001 승인"* 또는 *"REQ-1001 반려"*라고 입력하세요.`;
-        return { finalResponse: table };
-      }
-
-      if (toolName === 'review_resource_request') {
-        const req = res;
-        const isApproved = req.status === 'PROVISIONED' || req.status === 'APPROVED';
-        return {
-          finalResponse:
-            `### [자원 요청 ${req.id} ${isApproved ? '승인 및 자동 프로비저닝 완료' : '반려 처리 완료'}]\n\n` +
-            `- **신청자**: ${req.requesterName} (${req.department})\n` +
-            `- **검토자**: ${req.reviewerName || '인프라 관리자'}\n` +
-            `- **처리 의견**: ${req.reviewerComment || '검토 완료'}\n` +
-            `${req.provisionedVmid ? `- **프로비저닝된 VMID**: \`${req.provisionedVmid}\` (노드: \`${req.targetNode || 'pve-node-01'}\`)\n` : ''}` +
-            `${req.upid ? `- **태스크 UPID**: \`${req.upid}\`\n` : ''}` +
-            `\n개발팀 신청자에게 결과가 즉시 반영되었습니다.`,
-        };
-      }
-
-      if (toolName === 'list_nodes') {
-        const nodes = Array.isArray(res) ? res : [res];
-        let table = `### Proxmox 클러스터 노드 현황\n\n`;
-        table += `| 노드명 | 상태 | CPU 사용률 | 메모리 사용량 | 업타임 |\n`;
-        table += `| :--- | :---: | :---: | :---: | :---: |\n`;
-        for (const n of nodes) {
-          const cpu = ((n.cpu || 0) * 100).toFixed(1) + '%';
-          const mem = `${((n.mem || 0) / 1024 / 1024 / 1024).toFixed(1)}GB / ${((n.maxmem || 0) / 1024 / 1024 / 1024).toFixed(1)}GB`;
-          const uptime = `${Math.floor((n.uptime || 0) / 86400)}일 ${Math.floor(((n.uptime || 0) % 86400) / 3600)}시간`;
-          const statusBadge = n.status === 'online' ? 'Online' : 'Offline';
-          table += `| **${n.node}** | ${statusBadge} | ${cpu} | ${mem} | ${uptime} |\n`;
-        }
-        return { finalResponse: table };
-      }
-
-      if (toolName === 'cluster_resources') {
-        const items = Array.isArray(res) ? res : [];
-        const vms = items.filter((i: any) => i.type === 'qemu' || i.type === 'lxc');
-        let table = `### 전체 VM 및 컨테이너(LXC) 현황 (${vms.length}개)\n\n`;
-        table += `| VMID | 이름 | 유형 | 노드 | 상태 | vCPU | 메모리 |\n`;
-        table += `| :---: | :--- | :---: | :---: | :---: | :---: | :---: |\n`;
-        for (const v of vms) {
-          const status = v.status === 'running' ? 'Running' : 'Stopped';
-          const mem = `${((v.mem || 0) / 1024 / 1024 / 1024).toFixed(1)}GB / ${((v.maxmem || 0) / 1024 / 1024 / 1024).toFixed(1)}GB`;
-          table += `| \`${v.vmid}\` | **${v.name}** | \`${v.type.toUpperCase()}\` | ${v.node} | ${status} | ${v.cpus || 2} | ${mem} |\n`;
-        }
-        return { finalResponse: table };
-      }
-
-      if (toolName.includes('_start') || toolName.includes('_stop') || toolName.includes('_reboot')) {
-        const actionVerb = toolName.includes('_start')
-          ? '기동(Start)'
-          : toolName.includes('_reboot')
-            ? '재부팅(Reboot)'
-            : '종료(Stop)';
-        return {
-          finalResponse: `### [VM ${state.toolToCall.args.vmid} ${actionVerb} 명령 완료]\n\n` +
-            `- **대상**: 노드 \`${res.node || 'pve-node-01'}\` / VMID \`${res.vmid || state.toolToCall.args.vmid}\`\n` +
-            `- **Task UPID**: \`${res.upid || 'UPID:SUCCESS'}\`\n` +
-            `- **상태**: \`${res.status || 'processed'}\`\n\n` +
-            `대시보드 또는 콘솔에서 상태 변화를 확인하실 수 있습니다.`,
-        };
-      }
-
-      if (toolName === 'qemu_delete' || toolName === 'lxc_delete') {
-        return {
-          finalResponse: `### [VMID ${state.toolToCall.args.vmid} 삭제 완료]\n\n- Task UPID: \`${res.upid}\``,
-        };
-      }
-
-      if (toolName === 'qemu_create' || toolName === 'lxc_create') {
-        const vm = res.vm || {};
-        return {
-          finalResponse: `🎉 **새로운 ${res.targetKind.toUpperCase()} 인스턴스가 성공적으로 생성되었습니다!**\n\n` +
-            `- **VMID**: \`${res.vmid}\`\n` +
-            `- **이름**: **${vm.name || 'new-instance'}**\n` +
-            `- **노드**: \`${res.node}\`\n` +
-            `- **사양**: vCPU ${vm.cpus || 2} Core / 메모리 ${((vm.maxmem || 2048) / 1024 / 1024 / 1024).toFixed(0)}GB / 디스크 ${((vm.maxdisk || 32) / 1024 / 1024 / 1024).toFixed(0)}GB\n` +
-            `- **Task UPID**: \`${res.upid}\`\n\n` +
-            `대시보드에서 생성된 인스턴스를 즉시 기동하거나 관리하실 수 있습니다.`,
-        };
-      }
-
-      if (toolName === 'qemu_snapshot_create') {
-        return {
-          finalResponse: `📸 **VM ${res.vmid} 스냅샷이 성공적으로 생성되었습니다.**\n\n` +
-            `- **스냅샷 이름**: \`${res.snapname}\`\n` +
-            `- **노드**: \`${res.node}\`\n` +
-            `- **Task UPID**: \`${res.upid}\``,
-        };
-      }
-
-      if (toolName === 'qemu_snapshot_list') {
-        const snaps = Array.isArray(res) ? res : [];
-        let table = `### 📸 VM ${state.toolToCall.args.vmid} 스냅샷 목록 (${snaps.length}개)\n\n`;
-        table += `| 스냅샷 이름 | 생성 시각 | 설명 | RAM 상태 포함 |\n`;
-        table += `| :--- | :---: | :--- | :---: |\n`;
-        for (const s of snaps) {
-          const date = new Date(s.snaptime * 1000).toLocaleString('ko-KR');
-          const vmstate = s.vmstate ? '예 (RAM 포함)' : '아니오 (디스크만)';
-          table += `| **${s.name}** | ${date} | ${s.description || '-'} | ${vmstate} |\n`;
-        }
-        return { finalResponse: table };
-      }
-
-      if (toolName === 'qemu_resize_disk') {
-        return {
-          finalResponse: `💾 **VM ${res.vmid} 디스크 크기가 확장되었습니다.**\n\n` +
-            `- **디스크**: \`${res.disk}\`\n` +
-            `- **추가 용량**: \`${res.size}\`\n` +
-            `- **Task UPID**: \`${res.upid}\``,
-        };
-      }
-
-      return {
-        finalResponse: `✅ Proxmox 작업 결과:\n\`\`\`json\n${JSON.stringify(res, null, 2)}\n\`\`\``,
-      };
-    }
-
-    // Default conversational response
+    // 4. If reached without LLM, return guidance
     return {
-      finalResponse: `안녕하세요! **Proxmox VE 지능형 인프라 제어 에이전트**입니다. 🚀\n\n` +
-        `다음과 같은 명령을 자연어로 수행할 수 있습니다:\n` +
-        `- *"현재 클러스터 노드들과 리소스 상태 보여줘"*\n` +
-        `- *"실행 중인 VM 목록 알려줘"*\n` +
-        `- *"101번 VM 시작해줘"* 또는 *"104번 VM 부팅"* \n` +
-        `- *"100번 웹서버 VM 재부팅"* \n` +
-        `- *"105번 컨테이너 삭제해줘"* (보안 승인 게이트 자동 적용)\n\n` +
-        `무엇을 도와드릴까요?`,
+      finalResponse: this.getLlmNotConnectedMessage(),
     };
   }
 
