@@ -77,3 +77,8 @@ export * from './http-cache/http-cache.decorator';
 export * from './http-cache/http-cache.service';
 export * from './http-cache/http-cache.interceptor';
 export * from './http-cache/http-cache.module';
+
+// JEV Base Auth & Custom Fetch Override
+export * from './jev/jev.interface';
+export * from './jev/jev-fetch.service';
+export * from './jev/jev.module';

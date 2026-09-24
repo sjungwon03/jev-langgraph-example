@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 import { ConfigService } from '@nestjs/config';
@@ -297,6 +298,46 @@ describe('통합 백엔드 테스트 스위트 (Unified Backend Test Suite)', ()
       assert.strictEqual(reviewed.reviewerName, '인프라팀장');
       assert.ok(reviewed.provisionedVmid);
       assert.ok(reviewed.upid?.startsWith('UPID:'));
+    });
+  });
+
+  // ==========================================
+  // Suite 5: JEV Library Base Auth & Fetch Override
+  // ==========================================
+  describe('JEV Library Base Auth & Fetch Override', () => {
+    it('should configure LangGraphAgentService with Base Auth when environment variable is set', () => {
+      const configService = new ConfigService({
+        JEV_USE_BASE_AUTH: 'true',
+        JEV_BASE_AUTH_USER: 'jev_operator',
+        JEV_BASE_AUTH_PASS: 'cluster_secret_key',
+        LLM_API_KEY: 'test-llm-key',
+      });
+
+      const mockRemoteClient = {} as InfraRemoteClient;
+      const agentService = new LangGraphAgentService(configService, mockRemoteClient);
+
+      const authConfig = agentService.getAuthConfig();
+      assert.strictEqual(authConfig.useBaseAuth, true);
+      assert.strictEqual(authConfig.authType, 'basic');
+      assert.strictEqual(authConfig.username, 'jev_operator');
+      assert.strictEqual(authConfig.password, 'cluster_secret_key');
+
+      const customFetch = agentService.getFetch();
+      assert.strictEqual(typeof customFetch, 'function');
+      assert.ok(agentService.getJevClient());
+    });
+
+    it('should default to standard Bearer auth when JEV_USE_BASE_AUTH is not set', () => {
+      const configService = new ConfigService({
+        LLM_API_KEY: 'test-llm-key',
+      });
+
+      const mockRemoteClient = {} as InfraRemoteClient;
+      const agentService = new LangGraphAgentService(configService, mockRemoteClient);
+
+      const authConfig = agentService.getAuthConfig();
+      assert.strictEqual(authConfig.useBaseAuth, false);
+      assert.strictEqual(authConfig.authType, 'bearer');
     });
   });
 });

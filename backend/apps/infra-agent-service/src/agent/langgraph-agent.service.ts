@@ -26,6 +26,8 @@ export interface PendingConfirmation {
   expiresAt: number; // timestamp
 }
 
+import { resolveJevAuthConfig, createJevFetch, JevClient, JevAuthConfig } from '@nest-msa/common';
+
 // LangGraph State Annotation
 export const InfraAgentState = Annotation.Root({
   messages: Annotation<BaseMessage[]>({
@@ -75,6 +77,9 @@ export class LangGraphAgentService {
   private readonly logger = new Logger(LangGraphAgentService.name);
   private llm: any = null;
   private appGraph: any;
+  private jevAuthConfig: JevAuthConfig;
+  private jevClient: JevClient;
+  private customFetch: typeof globalThis.fetch;
 
   // Integrated Safety Gate State
   private pendingConfirmations: Map<string, PendingConfirmation> = new Map();
@@ -89,7 +94,27 @@ export class LangGraphAgentService {
     private readonly configService: ConfigService,
     private readonly remoteClient: InfraRemoteClient,
   ) {
-    // 1. Initialize LLM
+    // 1. Resolve JEV Authentication (Base Auth / Basic Auth vs Bearer)
+    this.jevAuthConfig = resolveJevAuthConfig(this.configService);
+    this.customFetch = createJevFetch(this.jevAuthConfig);
+
+    if (this.jevAuthConfig.useBaseAuth) {
+      this.logger.log(
+        `🛡️ [JEV Base Auth] Activated HTTP Basic Authentication (User: ${this.jevAuthConfig.username || 'token'}, Scheme: Basic) with fetch override.`,
+      );
+    } else {
+      this.logger.log(`🔗 [JEV Auth] Using standard authentication scheme: ${this.jevAuthConfig.authType}.`);
+    }
+
+    // 2. Initialize JevClient (System One & Decision Engine with fetch override)
+    const jevBaseUrl = this.configService?.get<string>('JEV_BASE_URL') || process.env.JEV_BASE_URL;
+    this.jevClient = new JevClient({
+      ...this.jevAuthConfig,
+      baseUrl: jevBaseUrl,
+      baseFetch: this.customFetch,
+    });
+
+    // 3. Initialize LLM with fetch override
     const apiKey = this.configService?.get<string>('LLM_API_KEY') || process.env.LLM_API_KEY || process.env.OPENAI_API_KEY;
     const baseURL = this.configService?.get<string>('LLM_BASE_URL') || process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL;
     const model = this.configService?.get<string>('LLM_MODEL') || process.env.LLM_MODEL || 'gpt-4o-mini';
@@ -98,11 +123,14 @@ export class LangGraphAgentService {
       try {
         this.llm = new ChatOpenAI({
           apiKey,
-          configuration: baseURL ? { baseURL } : undefined,
+          configuration: {
+            baseURL: baseURL || undefined,
+            fetch: this.customFetch,
+          },
           modelName: model,
           temperature: 0.1,
         });
-        this.logger.log(`Initialized ChatOpenAI model: ${model} (${baseURL || 'default OpenAI API'})`);
+        this.logger.log(`Initialized ChatOpenAI model: ${model} (${baseURL || 'default OpenAI API'}) with custom fetch override`);
       } catch (err: any) {
         this.logger.warn(`Could not initialize ChatOpenAI: ${err.message}`);
       }
@@ -1039,5 +1067,26 @@ ${toolInfo}`;
       confirmation,
       result,
     };
+  }
+
+  /**
+   * Get the active JEV Authentication configuration (Base Auth or Bearer)
+   */
+  getAuthConfig(): JevAuthConfig {
+    return { ...this.jevAuthConfig };
+  }
+
+  /**
+   * Get the dedicated JEV client instance
+   */
+  getJevClient(): JevClient {
+    return this.jevClient;
+  }
+
+  /**
+   * Get the overridden fetch implementation
+   */
+  getFetch(): typeof globalThis.fetch {
+    return this.customFetch;
   }
 }
