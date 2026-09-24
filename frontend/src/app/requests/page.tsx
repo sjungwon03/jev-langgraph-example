@@ -56,6 +56,11 @@ export default function ResourceRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [onlyMyRequests, setOnlyMyRequests] = useState(role === 'DEV_TEAM');
+
+  useEffect(() => {
+    setOnlyMyRequests(role === 'DEV_TEAM');
+  }, [role]);
 
   // New Request Modal state (Dev Mode)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -164,6 +169,9 @@ export default function ResourceRequestsPage() {
 
   const filteredRequests = requests.filter((r) => {
     if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
+    if (onlyMyRequests && requesterName) {
+      if (!r.requesterName.includes(requesterName)) return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
@@ -251,26 +259,45 @@ export default function ResourceRequestsPage() {
 
         {/* Filter and Search Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1 bg-slate-900/80 border border-slate-800 p-1 rounded-xl w-full sm:w-auto">
-            {[
-              { id: 'ALL', label: '전체' },
-              { id: 'PENDING', label: '대기 중' },
-              { id: 'PROVISIONED', label: '프로비저닝 완료' },
-              { id: 'REJECTED', label: '반려' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  statusFilter === tab.id
-                    ? 'bg-slate-800 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+          {/* Status Tabs & My Requests Filter */}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-1 bg-slate-900/80 border border-slate-800 p-1 rounded-xl">
+              {[
+                { id: 'ALL', label: '전체' },
+                { id: 'PENDING', label: '대기 중' },
+                { id: 'PROVISIONED', label: '프로비저닝 완료' },
+                { id: 'REJECTED', label: '반려' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setStatusFilter(tab.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    statusFilter === tab.id
+                      ? 'bg-slate-800 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {role === 'DEV_TEAM' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOnlyMyRequests(!onlyMyRequests)}
+                className={`h-9 px-3 text-xs gap-1.5 rounded-xl border transition-all ${
+                  onlyMyRequests
+                    ? 'bg-blue-950/80 border-blue-600/80 text-blue-300 font-medium'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {tab.label}
-              </button>
-            ))}
+                <User className="w-3.5 h-3.5" />
+                <span>내 요청만 보기 ({requesterName || '김개발'})</span>
+                {onlyMyRequests && <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+              </Button>
+            )}
           </div>
 
           {/* Search Input */}

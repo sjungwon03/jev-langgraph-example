@@ -761,19 +761,25 @@ export function ChatConsole() {
                         {msg.toolCalls.map((tc, idx) => (
                           <div
                             key={idx}
-                            className="p-2 rounded bg-slate-950/50 border border-slate-800/70 font-mono text-xs"
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-950/60 border border-purple-900/40 font-mono text-xs flex items-center justify-between shadow-sm"
                           >
-                            <div className="flex items-center justify-between text-slate-400">
-                              <span className="text-purple-400">⚡ {tc.tool}</span>
-                              <span className="text-[10px] text-slate-500">
-                                {tc.output ? '완료' : '실행 중...'}
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                              <span className="text-purple-300 font-medium">
+                                ⚡ 도구 호출: <span className="text-purple-200">{tc.tool}()</span>
                               </span>
                             </div>
-                            {tc.output && (
-                              <div className="mt-1 text-[11px] text-slate-400 max-h-24 overflow-y-auto">
-                                <pre className="whitespace-pre-wrap">{JSON.stringify(tc.output, null, 2)}</pre>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-1.5 text-[10px]">
+                              {tc.output ? (
+                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-emerald-400 border-emerald-800/80 bg-emerald-950/40">
+                                  ✓ 실행 완료
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-amber-400 border-amber-800/80 bg-amber-950/40 animate-pulse">
+                                  실행 중...
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

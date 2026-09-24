@@ -105,8 +105,12 @@ export class InfraRemoteClient {
   /**
    * Fetch resource requests list
    */
-  async getResourceRequests(status?: string): Promise<any[]> {
-    const url = `${this.baseUrl}/api/infra/requests${status ? `?status=${status}` : ''}`;
+  async getResourceRequests(status?: string, requester?: string): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (requester) params.append('requester', requester);
+    const qs = params.toString();
+    const url = `${this.baseUrl}/api/infra/requests${qs ? `?${qs}` : ''}`;
     try {
       const response = await firstValueFrom(
         this.httpService.get(url, { timeout: 10000 }),

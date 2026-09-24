@@ -329,7 +329,8 @@ export class LangGraphAgentService {
    - 🚨 [최우선 규칙: 자원 요청서 '조회' vs '신청' 절대 구분]:
      * 사용자가 "내 자원 요청 내역 조회", "자원 신청 현황", "신청한 티켓 확인", "요청 내역 보여줘", "내가 신청한 목록" 등 기존 신청 내역/목록/대기열/상태 조회를 요구하는 경우:
        -> 절대로 'create_resource_request'를 호출하지 마세요!
-       -> 반드시 'list_resource_requests'를 호출하세요! (args: {})
+       -> 반드시 'list_resource_requests'를 호출하세요! (args: { requester?: "${requester}" })
+        -> "내", "내가", "본인" 등 본인의 신청 내역 조회 또는 DEV_TEAM인 경우 requester 인수에 "${requester}"를 지정하세요.
      * 사용자가 실제로 신규 VM 생성이나 디스크 증설을 신청/발급해달라고 요구하는 경우에만:
        -> 'create_resource_request' 도구를 호출하여 티켓을 발급하세요.
        -> title, reason, type('CREATE_VM'|'RESIZE_DISK'|'DELETE_VM')을 결정하고, spec(cores, memory MB, disk GB, type)을 산출하세요.
@@ -344,7 +345,7 @@ export class LangGraphAgentService {
 [사용 가능한 도구 목록 (Available Tools)]
 - list_nodes: 클러스터 노드 목록 및 CPU/메모리/업타임 상태 조회 (args: {})
 - cluster_resources: 클러스터 내 전체 VM, LXC 컨테이너 및 상태 목록 조회 (args: { type?: 'vm' })
-- list_resource_requests: 개발팀 자원 신청 대기열 및 처리 이력 목록 조회 (args: { status?: 'PENDING'|'APPROVED'|'REJECTED'|'PROVISIONED' })
+- list_resource_requests: 개발팀 자원 신청 대기열 및 처리 이력 목록 조회 (args: { status?: 'PENDING'|'APPROVED'|'REJECTED'|'PROVISIONED', requester?: string })
 - create_resource_request: 개발팀 자원 신청 티켓 생성 (args: { title: string, reason: string, type: 'CREATE_VM'|'RESIZE_DISK'|'DELETE_VM', spec?: { cores?: number, memory?: number, disk?: number|string, type?: 'qemu'|'lxc', name?: string, node?: string, vmid?: number } })
 - review_resource_request: 인프라팀 자원 신청 승인 또는 반려 (args: { id: string, status: 'APPROVED'|'REJECTED', reviewerComment?: string, targetNode?: string })
 - qemu_start: VM 기동 (args: { node: string, vmid: number })
@@ -411,6 +412,15 @@ export class LangGraphAgentService {
               name: 'list_resource_requests',
               args: {},
             };
+          }
+
+          if (toolToCall?.name === 'list_resource_requests') {
+            if (userRole === 'DEV_TEAM' || /(내|내가|본인|나의)/i.test(text)) {
+              toolToCall.args = {
+                ...toolToCall.args,
+                requester: toolToCall.args?.requester || requester,
+              };
+            }
           }
 
           const decision = {
@@ -481,9 +491,15 @@ export class LangGraphAgentService {
       this.logger.log(`Executing tool remotely: ${tool.name} with ${JSON.stringify(tool.args)}`);
       let result: any;
       if (tool.name === 'create_resource_request') {
-        result = await this.remoteClient.createResourceRequest(tool.args);
+        const payload = {
+          ...tool.args,
+          requesterName: tool.args?.requesterName || state.requesterName || '김개발',
+          department: tool.args?.department || (state.role === 'DEV_TEAM' ? '서비스개발팀' : '인프라운영팀'),
+        };
+        result = await this.remoteClient.createResourceRequest(payload);
       } else if (tool.name === 'list_resource_requests') {
-        result = await this.remoteClient.getResourceRequests(tool.args?.status);
+        const requesterFilter = tool.args?.requester || (state.role === 'DEV_TEAM' ? state.requesterName : undefined);
+        result = await this.remoteClient.getResourceRequests(tool.args?.status, requesterFilter);
       } else if (tool.name === 'review_resource_request') {
         result = await this.remoteClient.reviewResourceRequest(tool.args.id, tool.args);
       } else {
@@ -531,7 +547,8 @@ export class LangGraphAgentService {
 사용자의 요청과 도구 실행 결과를 바탕으로 친절하고 자연스러운 한국어 마크다운 대화 응답을 작성하세요.
 - 작업이 성공했다면 결과의 핵심 내용(스펙, 노드, VMID, 승인 번호 등)을 읽기 쉬운 마크다운(표 또는 글머리 기호)으로 요약하여 답변하세요.
 - 만약 'list_resource_requests' 조회 결과인 경우:
-  * 내역이 비어있거나 항목이 없다면: "현재 접수되었거나 대기 중인 자원 요청 내역이 없습니다."라고 친절히 안내하세요.
+  * 본인이 신청한 내역(또는 요청된 목록)만 필터링되어 전달되므로 해당 내역을 깔끔한 마크다운 표로 안내하세요.
+  * 내역이 비어있거나 항목이 없다면: "${state.requesterName || '신청자'}님이 신청하신 자원 요청 내역이 없습니다."라고 친절히 안내하세요.
   * 내역이 있다면: [요청 번호(ID), 제목, 유형, 신청자, 진행 상태(PENDING/APPROVED/REJECTED), 신청일]을 마크다운 표로 깔끔하게 정리해 보여주세요.
 - 만약 'create_resource_request' 생성 결과인 경우:
   * 발급된 티켓 번호(REQ-XXXX), 신청 사유, 사양, 승인 대기 상태를 영수증 카드 마크다운 표로 요약해 주세요.
