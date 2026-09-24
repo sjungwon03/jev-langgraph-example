@@ -115,8 +115,23 @@ export function createJevFetch(
       }
     }
 
+    // Check target URL to avoid overwriting authorization headers for external services (e.g. api.openai.com)
+    let urlString = '';
+    if (typeof input === 'string') {
+      urlString = input;
+    } else if (input instanceof URL) {
+      urlString = input.toString();
+    } else if (input && typeof (input as any).url === 'string') {
+      urlString = (input as any).url;
+    }
+
+    const jevBaseUrl = process.env.JEV_BASE_URL || 'https://api.typesafe.ai';
+    const isJevTarget = !urlString || urlString.startsWith('/') || (Boolean(jevBaseUrl) && urlString.startsWith(jevBaseUrl));
+    const alreadyHasAuth = Boolean(headersMap['authorization']);
+
     // Apply Base Auth (Basic Authentication) if enabled
-    if (resolved.useBaseAuth || resolved.authType === 'basic') {
+    // Only apply if the request targets JEV, or if no authorization header was already set by caller (e.g. ChatOpenAI apiKey)
+    if ((resolved.useBaseAuth || resolved.authType === 'basic') && (isJevTarget || !alreadyHasAuth)) {
       let basicHeaderValue = '';
 
       if (resolved.token) {
@@ -135,7 +150,7 @@ export function createJevFetch(
         headersMap['authorization'] = basicHeaderValue;
         headersMap['proxy-authorization'] = basicHeaderValue;
       }
-    } else if (resolved.authType === 'bearer' && resolved.token) {
+    } else if (resolved.authType === 'bearer' && resolved.token && (isJevTarget || !alreadyHasAuth)) {
       const bearerValue = resolved.token.startsWith('Bearer ')
         ? resolved.token
         : `Bearer ${resolved.token}`;

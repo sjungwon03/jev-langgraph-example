@@ -358,8 +358,36 @@ export class LangGraphAgentService {
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         if (parsed && parsed.intent) {
-          this.logger.log(`🤖 LLM Reasoning Decision: intent=${parsed.intent}, tool=${parsed.toolToCall?.name}`);
-          return parsed;
+          let toolToCall: { name: string; args: Record<string, any> } | null = null;
+          if (
+            parsed.toolToCall &&
+            typeof parsed.toolToCall === 'object' &&
+            parsed.toolToCall.name &&
+            !['none', 'null', 'false'].includes(String(parsed.toolToCall.name).toLowerCase())
+          ) {
+            toolToCall = {
+              name: String(parsed.toolToCall.name),
+              args: parsed.toolToCall.args || {},
+            };
+          } else if (
+            parsed.tool &&
+            typeof parsed.tool === 'string' &&
+            !['none', 'null', 'false'].includes(parsed.tool.toLowerCase())
+          ) {
+            toolToCall = {
+              name: parsed.tool,
+              args: parsed.args || {},
+            };
+          }
+
+          const decision = {
+            intent: parsed.intent,
+            decisionWhy: parsed.decisionWhy || parsed.why || '사용자 의도 분석 완료',
+            safetyEvaluation: parsed.safetyEvaluation || 'SAFE',
+            toolToCall,
+          };
+          this.logger.log(`🤖 LLM Reasoning Decision: intent=${decision.intent}, tool=${decision.toolToCall?.name || 'none'}`);
+          return decision;
         }
       }
 
