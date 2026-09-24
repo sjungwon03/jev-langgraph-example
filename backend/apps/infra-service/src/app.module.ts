@@ -5,6 +5,7 @@ import { InfraModule } from './infra/infra.module';
 import { AutomationModule } from './automation/automation.module';
 import { AuditModule } from './audit/audit.module';
 import { ResourceRequestModule } from './resource-request/resource-request.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { ResourceRequestModule } from './resource-request/resource-request.modul
       isGlobal: true,
       envFilePath: ['.env', '../../infra/env/.env', '../infra/env/.env'],
     }),
+    AuthModule,
     ProxmoxMcpModule,
     InfraModule,
     AutomationModule,

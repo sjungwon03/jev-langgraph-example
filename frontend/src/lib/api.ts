@@ -372,4 +372,70 @@ export async function reviewResourceRequest(
   return res.json();
 }
 
+export type AuthUserRole = 'DEV_TEAM' | 'INFRA_TEAM';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  department: string;
+  role: AuthUserRole;
+  createdAt?: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message?: string;
+  user: UserProfile;
+  token: string;
+}
+
+export async function loginUser(data: { email: string; password: string }): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || '로그인에 실패했습니다.');
+  }
+  return json;
+}
+
+export async function registerUser(data: {
+  email: string;
+  password: string;
+  name: string;
+  department: string;
+  role: AuthUserRole;
+}): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || '회원가입에 실패했습니다.');
+  }
+  return json;
+}
+
+export async function fetchCurrentUser(token: string): Promise<UserProfile> {
+  const res = await fetch(`${API_BASE}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Failed to fetch user session');
+  const json = await res.json();
+  return json.user;
+}
+
+export async function logoutUser(token: string): Promise<void> {
+  await fetch(`${API_BASE}/api/auth/logout`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  }).catch(() => {});
+}
+
 

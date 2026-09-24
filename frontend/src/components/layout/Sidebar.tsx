@@ -8,7 +8,7 @@ import { useUserRole } from '@/lib/role-context';
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { role } = useUserRole();
+  const { role, user } = useUserRole();
 
   const navItems = [
     { href: '/', label: '인프라 대시보드', icon: LayoutDashboard },
@@ -79,6 +79,33 @@ export function Sidebar() {
 
       {/* Footer Info */}
       <div className="p-3 border-t border-slate-800/80 space-y-2">
+        {/* User Profile Mini Card */}
+        <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  role === 'DEV_TEAM' ? 'bg-blue-400' : 'bg-amber-400'
+                }`}
+              />
+              <span className="text-xs font-semibold text-slate-200 truncate">
+                {user ? user.name : '게스트'}
+              </span>
+            </div>
+            <div className="text-[10px] text-slate-500 truncate">
+              {user
+                ? `${user.role === 'DEV_TEAM' ? '개발팀' : '인프라팀'} • ${user.department}`
+                : '로그인 필요'}
+            </div>
+          </div>
+          <Link
+            href="/login"
+            className="text-[10px] text-slate-400 hover:text-slate-100 hover:bg-slate-800 px-2 py-1 rounded transition-colors shrink-0"
+          >
+            {user ? '계정전환' : '로그인'}
+          </Link>
+        </div>
+
         <div className="p-2.5 rounded-md bg-slate-900/60 border border-slate-800/80 text-xs text-slate-400 space-y-1">
           <div className="flex items-center justify-between text-[11px]">
             <span className="font-medium text-slate-300 flex items-center gap-1.5">
