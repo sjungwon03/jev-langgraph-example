@@ -316,13 +316,15 @@ export function ChatConsole() {
 
               // State Machine visual transitions
               if (chunk.type === 'thought') {
-                const isJev = Boolean(chunk.content?.includes('JEV Controller'));
+                const isJev = Boolean(chunk.content?.includes('JEV'));
+                const isLlm = Boolean(chunk.content?.includes('LLM'));
+                const targetNode = isLlm ? 'synthesizer' : (isJev ? 'jev_service' : 'router');
                 setExecutionState((prev) => ({
                   ...prev,
-                  activeNodeId: isJev ? 'jev_service' : 'router',
-                  isLlmActive: !isJev,
+                  activeNodeId: targetNode,
+                  isLlmActive: isLlm,
                   isJevActive: isJev,
-                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, isJev ? 'jev_service' : 'router'])),
+                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, targetNode])),
                   statusMessage: chunk.content,
                 }));
               } else if (chunk.type === 'decision') {

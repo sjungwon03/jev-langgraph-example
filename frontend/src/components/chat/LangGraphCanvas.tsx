@@ -66,51 +66,58 @@ const nodeDetails: Record<string, { desc: string }> = {
   __start__: {
     desc: '사용자의 자연어 메시지를 주입받아 LangGraph InfraAgentState 세션을 초기화합니다.',
   },
+  jev_service: {
+    desc: '⚡ JEV 인프라 컨트롤러가 요청을 최초 수신하여 팀 권한(개발팀/인프라팀)과 거버넌스 정책을 바인딩합니다.',
+  },
   router: {
-    desc: 'LLM(대형 언어 모델)을 호출하여 발화 의도를 심층 분석하고 필요한 Proxmox 도구 및 인수를 추론합니다.',
+    desc: '⚡ JEV 라우터가 사용자 발화를 분석하여 실행할 Proxmox MCP 도구 및 사양 파라미터를 정확하게 결정합니다.',
   },
   safety_check: {
-    desc: 'JEV 보안 정책 엔진 연동. VM 삭제/강제종료 등 파괴적 고위험 작업 감지 시 HITL 승인 토큰을 발급합니다.',
+    desc: '⚡ JEV 보안 거버넌스 정책 검증. VM 삭제/강제종료 등 파괴적 고위험 작업 감지 시 HITL 승인 토큰을 발급합니다.',
   },
   tool_executor: {
-    desc: 'JEV Controller API를 통해 Proxmox VE 8.2 클러스터 명령 및 자원 티켓을 원격 실행합니다.',
+    desc: '⚡ JEV 컨트롤러 API를 통해 Proxmox VE 8.2 클러스터 명령 및 자원 티켓을 원격 실행합니다.',
   },
   synthesizer: {
-    desc: 'LLM(대형 언어 모델)을 호출하여 도구 실행 결과를 취합하고 최종 한국어 마크다운 대화형 답변을 생성합니다.',
+    desc: '🤖 Cloud LLM API(OpenAI gpt-4o-mini)와 통신하여 JEV의 Proxmox 도구 실행 결과 데이터를 친절한 한국어 마크다운 대화형 답변으로 최종 합성합니다.',
   },
   __end__: {
     desc: 'SSE 스트리밍 전송을 정상 종료하고 세션 상태 및 감사 로그를 최종 커밋합니다.',
   },
-  llm_service: {
-    desc: '외부 Cloud LLM API(OpenAI gpt-4o-mini). Router(의도 분석)와 Synthesizer(응답 생성)가 실제로 통신하는 언어 모델 엔드포인트입니다.',
-  },
-  jev_service: {
-    desc: 'JEV Controller & Base Auth 프레임워크 (Cloud: https://api.typesafe.ai | Local: http://localhost:8000). Proxmox VE 8.2 가상화 인프라와 안전하게 통신합니다.',
-  },
 };
 
 const fixedNodes: CanvasNode[] = [
-  // 1. LangGraph Core State Machine Nodes (Center Spine)
   {
     id: '__start__',
     name: 'START',
-    sub: '상태 초기화',
+    sub: '사용자 발화 수신',
     type: 'start',
-    x: 225,
+    x: 185,
     y: 16,
-    w: 130,
+    w: 210,
     h: 36,
     description: nodeDetails.__start__.desc,
   },
   {
+    id: 'jev_service',
+    name: '⚡ JEV Controller',
+    sub: '거버넌스 인입 & 권한 검증',
+    type: 'jev_service',
+    x: 175,
+    y: 76,
+    w: 230,
+    h: 54,
+    description: nodeDetails.jev_service.desc,
+  },
+  {
     id: 'router',
-    name: '🤖 LLM 의도 분석',
-    sub: 'Router (도구 파라미터 추론)',
+    name: '⚡ JEV Router',
+    sub: '의도 분석 & 도구 결정',
     type: 'router',
-    x: 195,
-    y: 92,
-    w: 190,
-    h: 56,
+    x: 175,
+    y: 154,
+    w: 230,
+    h: 54,
     description: nodeDetails.router.desc,
   },
   {
@@ -118,9 +125,9 @@ const fixedNodes: CanvasNode[] = [
     name: '⚡ JEV Safety Gate',
     sub: '파괴적 고위험 검증 (HITL)',
     type: 'safety',
-    x: 160,
-    y: 196,
-    w: 160,
+    x: 175,
+    y: 232,
+    w: 230,
     h: 54,
     description: nodeDetails.safety_check.desc,
   },
@@ -129,21 +136,21 @@ const fixedNodes: CanvasNode[] = [
     name: '⚡ JEV Tool Executor',
     sub: 'Proxmox MCP API 실행',
     type: 'tool',
-    x: 160,
-    y: 300,
-    w: 160,
+    x: 175,
+    y: 310,
+    w: 230,
     h: 54,
     description: nodeDetails.tool_executor.desc,
   },
   {
     id: 'synthesizer',
     name: '🤖 LLM 응답 생성',
-    sub: 'Synthesizer (결과 요약 및 답변)',
+    sub: 'OpenAI (gpt-4o-mini)',
     type: 'synth',
-    x: 195,
-    y: 405,
-    w: 190,
-    h: 56,
+    x: 170,
+    y: 388,
+    w: 240,
+    h: 62,
     description: nodeDetails.synthesizer.desc,
   },
   {
@@ -151,42 +158,15 @@ const fixedNodes: CanvasNode[] = [
     name: 'END',
     sub: '스트리밍 완료 & 감사 커밋',
     type: 'end',
-    x: 225,
-    y: 512,
-    w: 130,
+    x: 185,
+    y: 486,
+    w: 210,
     h: 36,
     description: nodeDetails.__end__.desc,
-  },
-
-  // 2. Separate External Service Nodes (Sidecars)
-  {
-    id: 'jev_service',
-    name: '⚡ JEV Controller',
-    sub: '거버넌스 & 인프라 제어',
-    type: 'jev_service',
-    x: 14,
-    y: 55,
-    w: 156,
-    h: 68,
-    description: 'JEV Controller & Base Auth 프레임워크. 사용자 요청을 최초 접수하여 거버넌스 정책을 바인딩하고 Proxmox VE 인프라를 안전하게 제어합니다.',
-    isExternal: true,
-  },
-  {
-    id: 'llm_service',
-    name: '🌐 Cloud LLM API',
-    sub: 'OpenAI (gpt-4o-mini)',
-    type: 'llm_service',
-    x: 412,
-    y: 88,
-    w: 150,
-    h: 64,
-    description: '외부 대형 언어 모델 클라우드 API(OpenAI gpt-4o-mini). Router(의도 분석)와 Synthesizer(응답 생성) 단계에서 실제 언어 추론을 수행하는 백엔드 엔진입니다.',
-    isExternal: true,
   },
 ];
 
 const fixedEdges: CanvasEdge[] = [
-  // Core Transitions: 1. START -> JEV Controller (First Entry!)
   {
     id: 'e-start-jev',
     from: '__start__',
@@ -194,19 +174,12 @@ const fixedEdges: CanvasEdge[] = [
     label: '1. 요청 접수',
     color: '#10b981',
   },
-  // 2. JEV Controller -> Router (Delegates intent analysis)
   {
     id: 'e-jev-router',
     from: 'jev_service',
     to: 'router',
-    label: '2. 의도 분석 위임',
+    label: '2. 툴 콜링 위임',
     color: '#38bdf8',
-  },
-  {
-    id: 'e-start-router',
-    from: '__start__',
-    to: 'router',
-    color: '#10b981',
   },
   {
     id: 'e-router-safety',
@@ -254,44 +227,6 @@ const fixedEdges: CanvasEdge[] = [
     from: 'synthesizer',
     to: '__end__',
     color: '#818cf8',
-  },
-
-  // External Service Data Busses
-  {
-    id: 'e-router-llm',
-    from: 'router',
-    to: 'llm_service',
-    label: '의도 분석 API',
-    color: '#38bdf8',
-    dashed: true,
-    isExternalBus: true,
-  },
-  {
-    id: 'e-synth-llm',
-    from: 'synthesizer',
-    to: 'llm_service',
-    label: '응답 생성 API',
-    color: '#34d399',
-    dashed: true,
-    isExternalBus: true,
-  },
-  {
-    id: 'e-jev-tool',
-    from: 'tool_executor',
-    to: 'jev_service',
-    label: 'Proxmox 제어 RPC',
-    color: '#c084fc',
-    dashed: true,
-    isExternalBus: true,
-  },
-  {
-    id: 'e-jev-safety',
-    from: 'safety_check',
-    to: 'jev_service',
-    label: '거버넌스 검증',
-    color: '#f59e0b',
-    dashed: true,
-    isExternalBus: true,
   },
 ];
 
@@ -413,83 +348,61 @@ export function LangGraphCanvas({
     if (!fromNode || !toNode) return null;
 
     if (edge.id === 'e-start-jev') {
-      const p0 = { x: fromNode.x + 20, y: fromNode.y + fromNode.h };
+      const p0 = { x: fromNode.x + fromNode.w / 2, y: fromNode.y + fromNode.h };
       const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
-      return { p0, p1: { x: toNode.x + toNode.w / 2, y: p0.y + 10 }, p2: { x: toNode.x + toNode.w / 2, y: p3.y - 10 }, p3 };
+      return { p0, p1: { x: p0.x, y: p0.y + 8 }, p2: { x: p3.x, y: p3.y - 8 }, p3 };
     }
 
     if (edge.id === 'e-jev-router') {
-      const p0 = { x: fromNode.x + fromNode.w, y: fromNode.y + fromNode.h / 2 };
-      const p3 = { x: toNode.x, y: toNode.y + toNode.h / 2 };
-      return { p0, p1: { x: (p0.x + p3.x) / 2, y: p0.y }, p2: { x: (p0.x + p3.x) / 2, y: p3.y }, p3 };
+      const p0 = { x: fromNode.x + fromNode.w / 2, y: fromNode.y + fromNode.h };
+      const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
+      return { p0, p1: { x: p0.x, y: p0.y + 8 }, p2: { x: p3.x, y: p3.y - 8 }, p3 };
     }
 
     if (edge.id === 'e-start-router') {
       const p0 = { x: fromNode.x + fromNode.w / 2, y: fromNode.y + fromNode.h };
       const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
-      return { p0, p1: { x: p0.x, y: p0.y + 12 }, p2: { x: p3.x, y: p3.y - 12 }, p3 };
+      return { p0, p1: { x: p0.x, y: p0.y + 10 }, p2: { x: p3.x, y: p3.y - 10 }, p3 };
     }
 
     if (edge.id === 'e-router-safety') {
-      const p0 = { x: fromNode.x + 40, y: fromNode.y + fromNode.h };
+      const p0 = { x: fromNode.x + fromNode.w / 2, y: fromNode.y + fromNode.h };
       const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
-      return { p0, p1: { x: p0.x, y: p0.y + 22 }, p2: { x: p3.x, y: p3.y - 22 }, p3 };
+      return { p0, p1: { x: p0.x, y: p0.y + 10 }, p2: { x: p3.x, y: p3.y - 10 }, p3 };
     }
 
     if (edge.id === 'e-router-synth-bypass') {
-      const p0 = { x: fromNode.x + fromNode.w - 15, y: fromNode.y + fromNode.h / 2 };
-      const p3 = { x: toNode.x + toNode.w - 15, y: toNode.y + 15 };
-      const bypassX = 395;
-      return { p0, p1: { x: bypassX, y: p0.y + 25 }, p2: { x: bypassX, y: p3.y - 35 }, p3 };
+      // Right bypass curve around safety and tool nodes
+      const p0 = { x: fromNode.x + fromNode.w, y: fromNode.y + fromNode.h / 2 };
+      const p3 = { x: toNode.x + toNode.w, y: toNode.y + 20 };
+      const bypassX = 465;
+      return { p0, p1: { x: bypassX, y: p0.y + 25 }, p2: { x: bypassX, y: p3.y - 25 }, p3 };
     }
 
     if (edge.id === 'e-safety-tool') {
       const p0 = { x: fromNode.x + fromNode.w / 2, y: fromNode.y + fromNode.h };
       const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
-      return { p0, p1: { x: p0.x, y: p0.y + 16 }, p2: { x: p3.x, y: p3.y - 16 }, p3 };
+      return { p0, p1: { x: p0.x, y: p0.y + 10 }, p2: { x: p3.x, y: p3.y - 10 }, p3 };
     }
 
     if (edge.id === 'e-safety-synth-interrupted') {
-      const p0 = { x: fromNode.x + fromNode.w - 5, y: fromNode.y + fromNode.h / 2 };
-      const p3 = { x: toNode.x + 35, y: toNode.y };
-      return { p0, p1: { x: p0.x + 45, y: p0.y + 20 }, p2: { x: p3.x - 20, y: p3.y - 35 }, p3 };
+      // Left bypass curve around tool executor when HITL interrupts directly to synthesizer
+      const p0 = { x: fromNode.x, y: fromNode.y + fromNode.h / 2 };
+      const p3 = { x: toNode.x, y: toNode.y + 20 };
+      const bypassX = 115;
+      return { p0, p1: { x: bypassX, y: p0.y + 25 }, p2: { x: bypassX, y: p3.y - 25 }, p3 };
     }
 
     if (edge.id === 'e-tool-synth') {
       const p0 = { x: fromNode.x + fromNode.w / 2, y: fromNode.y + fromNode.h };
-      const p3 = { x: toNode.x + 50, y: toNode.y };
-      return { p0, p1: { x: p0.x, y: p0.y + 22 }, p2: { x: p3.x, y: p3.y - 22 }, p3 };
+      const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
+      return { p0, p1: { x: p0.x, y: p0.y + 10 }, p2: { x: p3.x, y: p3.y - 10 }, p3 };
     }
 
     if (edge.id === 'e-synth-end') {
       const p0 = { x: fromNode.x + fromNode.w / 2, y: fromNode.y + fromNode.h };
       const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
-      return { p0, p1: { x: p0.x, y: p0.y + 16 }, p2: { x: p3.x, y: p3.y - 16 }, p3 };
-    }
-
-    // External Busses
-    if (edge.id === 'e-router-llm') {
-      const p0 = { x: fromNode.x + fromNode.w, y: fromNode.y + fromNode.h / 2 };
-      const p3 = { x: toNode.x, y: toNode.y + toNode.h / 2 };
-      return { p0, p1: { x: (p0.x + p3.x) / 2, y: p0.y }, p2: { x: (p0.x + p3.x) / 2, y: p3.y }, p3 };
-    }
-
-    if (edge.id === 'e-synth-llm') {
-      const p0 = { x: fromNode.x + fromNode.w, y: fromNode.y + 20 };
-      const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y + toNode.h };
-      return { p0, p1: { x: p3.x, y: p0.y }, p2: { x: p3.x, y: (p0.y + p3.y) / 2 }, p3 };
-    }
-
-    if (edge.id === 'e-jev-tool') {
-      const p0 = { x: fromNode.x, y: fromNode.y + fromNode.h / 2 };
-      const p3 = { x: toNode.x + 40, y: toNode.y + toNode.h };
-      return { p0, p1: { x: toNode.x + 40, y: p0.y }, p2: { x: toNode.x + 40, y: p3.y + 20 }, p3 };
-    }
-
-    if (edge.id === 'e-jev-safety') {
-      const p0 = { x: fromNode.x, y: fromNode.y + 20 };
-      const p3 = { x: toNode.x + toNode.w - 30, y: toNode.y + toNode.h };
-      return { p0, p1: { x: toNode.x + toNode.w - 30, y: p0.y }, p2: { x: toNode.x + toNode.w - 30, y: p3.y + 20 }, p3 };
+      return { p0, p1: { x: p0.x, y: p0.y + 10 }, p2: { x: p3.x, y: p3.y - 10 }, p3 };
     }
 
     return null;
@@ -708,46 +621,7 @@ export function LangGraphCanvas({
         }
       }
 
-      // External Data Bus Energy Packets (ONLY active when LLM or JEV are actively engaged)
-      if (exec?.isLlmActive) {
-        const edge = fixedEdges.find((e) => e.id === 'e-router-llm');
-        if (edge) {
-          const pts = getEdgePoints(edge);
-          if (pts) {
-            const t = (time / 300) % 1;
-            const pt = getBezierPoint(pts.p0, pts.p1, pts.p2, pts.p3, t);
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#38bdf8';
-            ctx.shadowColor = '#38bdf8';
-            ctx.shadowBlur = 12;
-            ctx.fill();
-            ctx.restore();
-          }
-        }
-      }
-
-      if (exec?.isJevActive) {
-        const edge = fixedEdges.find((e) => e.id === 'e-jev-tool');
-        if (edge) {
-          const pts = getEdgePoints(edge);
-          if (pts) {
-            const t = (time / 300) % 1;
-            const pt = getBezierPoint(pts.p0, pts.p1, pts.p2, pts.p3, t);
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#c084fc';
-            ctx.shadowColor = '#c084fc';
-            ctx.shadowBlur = 12;
-            ctx.fill();
-            ctx.restore();
-          }
-        }
-      }
-
-      // 3. Draw Nodes (Core + External Sidecars)
+      // 3. Draw Nodes (Core 1-Column Pipeline)
       fixedNodes.forEach((node) => {
         const isActive = activeNode === node.id;
         const isVisited = visitedSet.has(node.id);
@@ -755,8 +629,8 @@ export function LangGraphCanvas({
         const isHovered = hoveredNode === node.id;
 
         const isExternalActive =
-          (node.id === 'llm_service' && exec?.isLlmActive) ||
-          (node.id === 'jev_service' && exec?.isJevActive);
+          (node.id === 'synthesizer' && !!exec?.isLlmActive) ||
+          (node.id === 'jev_service' && !!exec?.isJevActive);
 
         let accentColor = '#3b82f6';
         let bgGradient = ['#0f172a', '#1e293b'];
@@ -890,19 +764,18 @@ export function LangGraphCanvas({
           ctx.font = 'bold 8.5px monospace';
           ctx.fillStyle = '#7dd3fc';
           ctx.fillText(`intent: ${exec.intent}`, node.x + 24, node.y + 39);
-        } else if (node.id === 'synthesizer' && (isActive || isVisited)) {
+        } else if (node.id === 'synthesizer' && (isActive || isVisited || exec?.isLlmActive)) {
           ctx.font = 'bold 8.5px monospace';
           ctx.fillStyle = '#6ee7b7';
-          ctx.fillText(isActive ? '⚡ 한국어 답변 합성 중' : '✓ 응답 합성 완료', node.x + 24, node.y + 39);
-        } else if (node.isExternal) {
-          ctx.font = '8.5px monospace';
-          ctx.fillStyle = isExternalActive ? accentColor : '#64748b';
-          const label = node.id === 'llm_service' ? 'CLOUD API' : 'PROXMOX API';
-          ctx.fillText(label, node.x + 24, node.y + 42);
+          ctx.fillText(isActive || exec?.isLlmActive ? '⚡ 한국어 답변 합성 중' : '✓ 응답 합성 완료', node.x + 24, node.y + 39);
+        } else if (node.id === 'jev_service' && (isActive || isVisited || exec?.isJevActive)) {
+          ctx.font = 'bold 8.5px monospace';
+          ctx.fillStyle = '#34d399';
+          ctx.fillText(isActive || exec?.isJevActive ? '⚡ 거버넌스 정책 검증 중' : '✓ 거버넌스 승인 완료', node.x + 24, node.y + 39);
         }
 
         // Visited Checkmark Badge
-        if (isVisited && !isActive && !node.isExternal) {
+        if (isVisited && !isActive) {
           ctx.font = 'bold 9px monospace';
           ctx.fillStyle = '#34d399';
           ctx.textAlign = 'right';

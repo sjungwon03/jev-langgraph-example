@@ -650,6 +650,11 @@ ${toolInfo}`;
           } else if (nodeName === 'synthesizer') {
             finalResponse = out.finalResponse || finalResponse;
             yield {
+              type: 'thought',
+              content: `[🤖 LLM 응답 생성] Cloud LLM (OpenAI gpt-4o-mini) 기반 최종 응답 합성 중...`,
+              threadId,
+            };
+            yield {
               type: 'content',
               content: finalResponse,
               threadId,
@@ -746,9 +751,9 @@ ${toolInfo}`;
         },
         {
           id: 'router',
-          name: '🤖 LLM 의도 분석 (Router)',
-          label: 'LLM 의도 분석 (Router)',
-          description: 'Cloud LLM을 호출하여 사용자 자연어 발화를 분석하고 Proxmox 도구 및 사양 파라미터를 정확하게 도출',
+          name: '⚡ JEV Router',
+          label: 'JEV 의도 분석 & 도구 결정',
+          description: 'JEV 인프라 컨트롤러가 사용자 발화를 분석하여 실행할 Proxmox 도구 및 사양 파라미터를 정확하게 결정',
           type: 'router' as const,
           stateChanges: ['intent', 'toolToCall', 'decisionWhy', 'safetyEvaluation'],
         },
@@ -770,9 +775,9 @@ ${toolInfo}`;
         },
         {
           id: 'synthesizer',
-          name: '🤖 LLM 응답 생성 (Synthesizer)',
-          label: 'LLM 대화 응답 생성 (Synthesizer)',
-          description: 'Cloud LLM을 호출하여 Proxmox 도구 실행 결과 데이터를 친절한 한국어 마크다운 대화로 최종 합성',
+          name: '🤖 LLM 응답 생성 (OpenAI gpt-4o-mini)',
+          label: 'Cloud LLM 응답 생성 (OpenAI gpt-4o-mini)',
+          description: 'Cloud LLM(OpenAI gpt-4o-mini)을 호출하여 JEV의 Proxmox 도구 실행 결과 데이터를 친절한 한국어 마크다운 대화로 최종 합성',
           type: 'synth' as const,
           stateChanges: ['finalResponse'],
         },
@@ -784,36 +789,16 @@ ${toolInfo}`;
           type: 'end' as const,
           stateChanges: [],
         },
-        {
-          id: 'llm_service',
-          name: '🌐 Cloud LLM API',
-          label: 'Cloud LLM Engine (OpenAI)',
-          description: 'Router(의도 분석)와 Synthesizer(응답 생성) 단계가 실제로 호출하여 언어 추론을 수행하는 외부 LLM 모델 엔드포인트(OpenAI gpt-4o-mini)',
-          type: 'llm_service' as const,
-          stateChanges: [],
-        },
-        {
-          id: 'jev_service',
-          name: '⚡ JEV Controller',
-          label: 'JEV Controller (Base Auth)',
-          description: 'JEV Controller & Base Auth 프레임워크 (Cloud: https://api.typesafe.ai | Local: http://localhost:8000). Proxmox VE 8.2 가상화 인프라와 안전하게 통신합니다.',
-          type: 'jev_service' as const,
-          stateChanges: [],
-        },
       ],
       edges: [
-        { from: '__start__', to: 'jev_service', label: '1. 요청 접수 & 거버넌스 바인딩' },
-        { from: 'jev_service', to: 'router', label: '2. 의도 추론 위임' },
+        { from: '__start__', to: 'jev_governance', label: '1. 요청 접수 & 거버넌스 바인딩' },
+        { from: 'jev_governance', to: 'router', label: '2. 툴 콜링 분석' },
         { from: 'router', to: 'safety_check', label: '도구 호출 필요', condition: 'toolToCall != null' },
-        { from: 'router', to: 'synthesizer', label: '일반 질문 / 대화', condition: 'toolToCall == null' },
+        { from: 'router', to: 'synthesizer', label: '일반 질문 / 대화 우회', condition: 'toolToCall == null' },
         { from: 'safety_check', to: 'synthesizer', label: '고위험 승인 대기', condition: 'confirmationNeeded != null' },
         { from: 'safety_check', to: 'tool_executor', label: '안전 작업 승인 통과', condition: 'confirmationNeeded == null' },
         { from: 'tool_executor', to: 'synthesizer', label: '실행 결과 전달' },
         { from: 'synthesizer', to: '__end__', label: '최종 스트리밍 완료' },
-        { from: 'router', to: 'llm_service', label: '의도 분석 API 호출' },
-        { from: 'synthesizer', to: 'llm_service', label: '응답 생성 API 호출' },
-        { from: 'safety_check', to: 'jev_service', label: '보안 정책 평가' },
-        { from: 'tool_executor', to: 'jev_service', label: 'Proxmox 제어 RPC' },
       ],
     };
   }
