@@ -1,0 +1,67 @@
+name: GitHub Release archive
+on:
+  push: { branches: [main] }
+permissions: { contents: write }
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: { node-version: 22, cache: npm }
+      - id: release-intent
+        name: Determine release intent
+        env:
+          EVENT_BEFORE: ${{ github.event.before }}
+        run: node scripts/release-intent.mjs "$EVENT_BEFORE" "$GITHUB_SHA"
+      - name: Report skipped immutable release reconciliation
+        if: steps.release-intent.outputs.release != 'true'
+        run: |
+          MESSAGE='No release inputs changed; skipping immutable release reconciliation.'
+          echo "$MESSAGE"
+          echo "$MESSAGE" >> "$GITHUB_STEP_SUMMARY"
+      - id: version
+        name: Derive immutable SemVer tag from package.json
+        if: steps.release-intent.outputs.release == 'true'
+        run: |
+          VERSION="$(node -e '
+            const pkg = JSON.parse(require("node:fs").readFileSync("package.json", "utf8"));
+            const version = pkg.version;
+            const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+            if (typeof version !== "string" || !semver.test(version)) process.exit(1);
+            process.stdout.write(version);
+          ')"
+          TAG="v${VERSION}"
+          printf 'version=%s\ntag=%s\n' "$VERSION" "$TAG" >> "$GITHUB_OUTPUT"
+      - id: reconciliation
+        name: Resolve immutable release state
+        if: steps.release-intent.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: node scripts/release-reconciliation.mjs "$TAG"
+      - name: Report existing immutable release
+        if: steps.reconciliation.outputs.state == 'existing'
+        run: |
+          MESSAGE='An immutable release already exists for this package version; skipping release publication.'
+          echo "$MESSAGE"
+          echo "$MESSAGE" >> "$GITHUB_STEP_SUMMARY"
+      - name: Build and verify release archive
+        if: steps.reconciliation.outputs.state == 'new'
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA" && npm ci && npm run build && npm run release:archive && npm run verify:release-archive
+      - name: Create immutable release tag
+        if: steps.reconciliation.outputs.state == 'new'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" "$GITHUB_SHA" -m "Release $TAG"
+          git push origin "refs/tags/$TAG"
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
+        if: steps.reconciliation.outputs.state == 'new'
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          files: release/proxmox-mcp-*.tar.gz*

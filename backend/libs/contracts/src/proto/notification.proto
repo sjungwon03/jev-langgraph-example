@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package notification;
+
+service NotificationGrpcService {
+  rpc SendEmail (SendEmailRequest) returns (NotificationResponse);
+  rpc SendPush (SendPushRequest) returns (NotificationResponse);
+  rpc SendSms (SendSmsRequest) returns (NotificationResponse);
+  rpc SendNotification (SendNotificationRequest) returns (NotificationResponse);
+  rpc GetChannelStatus (ChannelStatusRequest) returns (ChannelStatusResponse);
+  rpc GetHistory (HistoryRequest) returns (HistoryResponse);
+}
+
+message SendEmailRequest {
+  string to = 1;
+  string subject = 2;
+  string template = 3;
+  string variablesJson = 4;
+  string text = 5;
+  string html = 6;
+}
+
+message SendPushRequest {
+  string token = 1;
+  repeated string tokens = 2;
+  string topic = 3;
+  string title = 4;
+  string body = 5;
+  string dataJson = 6;
+  string imageUrl = 7;
+}
+
+message SendSmsRequest {
+  string to = 1;
+  string text = 2;
+  string sender = 3;
+}
+
+message SendNotificationRequest {
+  string channel = 1;
+  SendEmailRequest email = 2;
+  SendPushRequest push = 3;
+  SendSmsRequest sms = 4;
+}
+
+message NotificationResponse {
+  bool success = 1;
+  string channel = 2;
+  string messageId = 3;
+  string status = 4;
+  string error = 5;
+  string sentAt = 6;
+}
+
+message ChannelStatusRequest {}
+
+message ChannelDetail {
+  bool enabled = 1;
+  string mode = 2;
+}
+
+message ChannelStatusResponse {
+  ChannelDetail email = 1;
+  ChannelDetail fcm = 2;
+  ChannelDetail sms = 3;
+}
+
+message HistoryRequest {
+  int32 limit = 1;
+}
+
+message HistoryItem {
+  string id = 1;
+  string channel = 2;
+  string recipient = 3;
+  string title = 4;
+  string status = 5;
+  string messageId = 6;
+  string error = 7;
+  string sentAt = 8;
+}
+
+message HistoryResponse {
+  repeated HistoryItem items = 1;
+}

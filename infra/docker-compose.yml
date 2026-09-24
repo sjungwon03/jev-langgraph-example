@@ -1,0 +1,109 @@
+services:
+  # Redis 7 for ShedLock Distributed Lock, Cache, Rate Limiting
+  redis:
+    image: redis:7-alpine
+    container_name: pve-infra-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # RabbitMQ 3 for Microservices Event Bus
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: pve-infra-rabbitmq
+    restart: unless-stopped
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dev_user}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-dev_pass}
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Microservice 1: Infrastructure Service (Proxmox MCP & Lifecycle)
+  infra-service:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.infra
+    container_name: pve-infra-service
+    restart: unless-stopped
+    ports:
+      - '3020:3020'
+    environment:
+      - PORT=3020
+      - PROXMOX_BASE_URL=${PROXMOX_BASE_URL:-https://pve.example.com:8006}
+      - PROXMOX_TOKEN_ID=${PROXMOX_TOKEN_ID:-root@pam!token}
+      - PROXMOX_TOKEN_SECRET=${PROXMOX_TOKEN_SECRET:-dev_token_secret}
+      - PROXMOX_MOCK_MODE=${PROXMOX_MOCK_MODE:-true}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_URI=amqp://${RABBITMQ_USER:-dev_user}:${RABBITMQ_PASS:-dev_pass}@rabbitmq:5672
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # Backend Microservice 2: Chat Agent Service (LangGraph & AI Brain)
+  infra-agent-service:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.agent
+    container_name: pve-infra-agent
+    restart: unless-stopped
+    ports:
+      - '3010:3010'
+    environment:
+      - PORT=3010
+      - INFRA_SERVICE_URL=http://infra-service:3020
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - infra-service
+
+  # Backend Microservice 3: API Gateway (L7 Gateway, SSE, Swagger)
+  api-gateway:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.gateway
+    container_name: pve-api-gateway
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      - PORT=3000
+      - CHAT_SERVICE_URL=http://infra-agent-service:3010
+      - INFRA_SERVICE_URL=http://infra-service:3020
+    depends_on:
+      - infra-agent-service
+      - infra-service
+
+  # Frontend: Next.js 15 Web Console & Chatbot Dashboard
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: pve-frontend-console
+    restart: unless-stopped
+    ports:
+      - '3001:3000'
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://api-gateway:3000
+    depends_on:
+      - api-gateway
+
+networks:
+  default:
+    name: pve-infra-network

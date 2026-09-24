@@ -1,0 +1,6 @@
+packages:
+  - 'apps/*'
+  - 'libs/*'
+allowBuilds:
+  '@scarf/scarf': set this to true or false
+  protobufjs: set this to true or false

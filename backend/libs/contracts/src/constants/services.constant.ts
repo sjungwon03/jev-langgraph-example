@@ -1,0 +1,16 @@
+export const SERVICES = {
+  AUTH_SERVICE: 'AUTH_SERVICE',
+  AUTH_GRPC_SERVICE: 'AUTH_GRPC_SERVICE',
+  NOTIFICATION_SERVICE: 'NOTIFICATION_SERVICE',
+  NOTIFICATION_GRPC_SERVICE: 'NOTIFICATION_GRPC_SERVICE',
+  ORDER_SERVICE: 'ORDER_SERVICE',
+  API_GATEWAY: 'API_GATEWAY',
+} as const;
+
+export const PACKAGES = {
+  AUTH: 'auth',
+  NOTIFICATION: 'notification',
+} as const;
+
+export type ServiceName = (typeof SERVICES)[keyof typeof SERVICES];
+

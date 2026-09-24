@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthGrpcService {
+  rpc Login (LoginRequest) returns (AuthResponse);
+  rpc Register (RegisterRequest) returns (UserResponse);
+  rpc SocialLogin (SocialLoginRequest) returns (AuthResponse);
+  rpc GetProfile (GetProfileRequest) returns (UserProfileResponse);
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message RegisterRequest {
+  string email = 1;
+  string name = 2;
+  string password = 3;
+}
+
+message SocialLoginRequest {
+  string provider = 1;
+  string providerId = 2;
+  string email = 3;
+  string name = 4;
+  string profileImage = 5;
+  string accessToken = 6;
+}
+
+message GetProfileRequest {
+  string id = 1;
+}
+
+message UserDto {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string provider = 4;
+  string profileImage = 5;
+  string createdAt = 6;
+}
+
+message AuthResponse {
+  string accessToken = 1;
+  string tokenType = 2;
+  string expiresIn = 3;
+  UserDto user = 4;
+}
+
+message UserResponse {
+  UserDto user = 1;
+}
+
+message UserProfileResponse {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string provider = 4;
+  string profileImage = 5;
+  string createdAt = 6;
+}

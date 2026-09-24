@@ -1,0 +1,10 @@
+.git
+.idea
+.vscode
+dist
+coverage
+test
+tests
+node_modules
+**/node_modules
+*.log

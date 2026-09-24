@@ -1,0 +1,36 @@
+{
+  "name": "backend-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NestJS MSA Backend for Proxmox Control with LangGraph & MCP",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "dev:gateway": "pnpm --filter api-gateway start:dev",
+    "dev:agent": "pnpm --filter infra-agent-service start:dev",
+    "dev:infra": "pnpm --filter infra-service start:dev",
+    "start:gateway": "pnpm --filter api-gateway start",
+    "start:agent": "pnpm --filter infra-agent-service start",
+    "start:infra": "pnpm --filter infra-service start",
+    "test": "npx --yes tsx --tsconfig ./tsconfig.json --test test/backend.spec.ts",
+    "test:jest": "jest",
+    "test:cov": "jest --coverage",
+    "clean": "pnpm -r exec rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "devDependencies": {
+    "@esbuild/linux-x64": "^0.28.2",
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.1",
+    "jest": "^29.7.0",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "reflect-metadata": "^0.2.2"
+  }
+}

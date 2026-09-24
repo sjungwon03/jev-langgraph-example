@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": false,
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@nest-msa/common": ["libs/common/src/index.ts"],
+      "@nest-msa/common/*": ["libs/common/src/*"],
+      "@nest-msa/contracts": ["libs/contracts/src/index.ts"],
+      "@nest-msa/contracts/*": ["libs/contracts/src/*"]
+    }
+  }
+}

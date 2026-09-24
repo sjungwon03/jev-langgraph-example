@@ -1,0 +1,29 @@
+{
+  "name": "jev-langgraph-proxmox-msa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Proxmox MCP & LangGraph Autonomous AI Infrastructure Control Platform",
+  "scripts": {
+    "dev:agent": "cd backend && npx tsx watch apps/infra-agent-service/src/main.ts",
+    "dev:infra": "cd backend && npx tsx watch apps/infra-service/src/main.ts",
+    "dev:gateway": "cd backend && npx tsx watch apps/api-gateway/src/main.ts",
+    "dev:frontend": "cd frontend && npm run dev",
+    "test:backend": "cd backend && npx --yes tsx --tsconfig ./tsconfig.json --test test/backend.spec.ts",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down",
+    "infra:ps": "docker compose -f infra/docker-compose.yml ps"
+  },
+  "keywords": [
+    "proxmox",
+    "mcp",
+    "model-context-protocol",
+    "langgraph",
+    "nestjs",
+    "nextjs",
+    "msa",
+    "ai-agent",
+    "infrastructure-as-code"
+  ],
+  "author": "sjungwon03",
+  "license": "MIT"
+}

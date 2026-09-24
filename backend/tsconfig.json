@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@nest-msa/common": ["libs/common/src/index.ts"],
+      "@nest-msa/common/*": ["libs/common/src/*"],
+      "@nest-msa/contracts": ["libs/contracts/src/index.ts"],
+      "@nest-msa/contracts/*": ["libs/contracts/src/*"]
+    }
+  }
+}
