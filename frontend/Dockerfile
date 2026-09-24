@@ -1,7 +1,7 @@
 FROM node:22-alpine
 WORKDIR /app
 
-COPY package.json tsconfig.json tailwind.config.js postcss.config.js components.json patch-fs.js ./
+COPY package.json tsconfig.json tailwind.config.js postcss.config.js components.json patch-fs.js next.config.ts ./
 COPY node_modules ./node_modules
 COPY src ./src
 

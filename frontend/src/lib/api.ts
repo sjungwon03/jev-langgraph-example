@@ -107,16 +107,37 @@ export interface StreamChunk {
 
 const API_BASE = ''; // Uses Next.js rewrite or direct proxy
 
+async function safeJson<T>(res: Response, fallbackMessage: string = '요청 처리에 실패했습니다.'): Promise<T> {
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await res.text().catch(() => '');
+    if (!res.ok) {
+      throw new Error(`서버 오류 (${res.status}): ${text.slice(0, 120) || res.statusText || fallbackMessage}`);
+    }
+    throw new Error(`응답 형식이 올바르지 않습니다 (${res.status}).`);
+  }
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || fallbackMessage);
+  }
+  return json as T;
+}
+
+async function safeJsonOrFallback<T>(res: Response, fallback: T): Promise<T> {
+  if (!res.ok) return fallback;
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) return fallback;
+  return res.json().catch(() => fallback);
+}
+
 export async function fetchClusterSummary(): Promise<ClusterSummary> {
   const res = await fetch(`${API_BASE}/api/infra/summary`);
-  if (!res.ok) throw new Error('Failed to fetch cluster summary');
-  return res.json();
+  return safeJson<ClusterSummary>(res, '클러스터 요약 정보를 불러오지 못했습니다.');
 }
 
 export async function fetchNodes(): Promise<ProxmoxNode[]> {
   const res = await fetch(`${API_BASE}/api/infra/nodes`);
-  if (!res.ok) throw new Error('Failed to fetch nodes');
-  return res.json();
+  return safeJson<ProxmoxNode[]>(res, '노드 목록을 불러오지 못했습니다.');
 }
 
 export async function executeVmAction(
@@ -124,26 +145,25 @@ export async function executeVmAction(
   vmid: number,
   action: 'start' | 'stop' | 'reboot' | 'shutdown' | 'force_stop' | 'delete',
   confirm: boolean = false,
-) {
+): Promise<{ success: boolean; message?: string; [key: string]: any }> {
   const res = await fetch(`${API_BASE}/api/infra/action`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ node, vmid, action, confirm }),
   });
-  return res.json();
+  return safeJson<{ success: boolean; message?: string; [key: string]: any }>(res, 'VM 작업을 실행하지 못했습니다.');
 }
 
 export async function fetchAutomationRules(): Promise<AutomationRule[]> {
   const res = await fetch(`${API_BASE}/api/automation/rules`);
-  if (!res.ok) throw new Error('Failed to fetch automation rules');
-  return res.json();
+  return safeJson<AutomationRule[]>(res, '자동화 규칙 목록을 불러오지 못했습니다.');
 }
 
 export async function toggleAutomationRule(id: string): Promise<AutomationRule> {
   const res = await fetch(`${API_BASE}/api/automation/rules/${id}/toggle`, {
     method: 'PATCH',
   });
-  return res.json();
+  return safeJson<AutomationRule>(res, '규칙 상태를 변경하지 못했습니다.');
 }
 
 export async function createAutomationRule(data: Partial<AutomationRule>): Promise<AutomationRule> {
@@ -152,7 +172,7 @@ export async function createAutomationRule(data: Partial<AutomationRule>): Promi
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return res.json();
+  return safeJson<AutomationRule>(res, '자동화 규칙 생성에 실패했습니다.');
 }
 
 export async function deleteAutomationRule(id: string): Promise<void> {
@@ -161,23 +181,24 @@ export async function deleteAutomationRule(id: string): Promise<void> {
 
 export async function fetchAuditLogs(limit = 30): Promise<AuditLog[]> {
   const res = await fetch(`${API_BASE}/api/audit/logs?limit=${limit}`);
-  if (!res.ok) throw new Error('Failed to fetch audit logs');
-  return res.json();
+  return safeJsonOrFallback<AuditLog[]>(res, []);
 }
 
 export async function fetchDecisionLogs(limit = 50): Promise<AuditLog[]> {
   const res = await fetch(`${API_BASE}/api/audit/decisions?limit=${limit}`);
-  if (!res.ok) return [];
-  return res.json();
+  return safeJsonOrFallback<AuditLog[]>(res, []);
 }
 
-export async function confirmAction(token: string, approved: boolean) {
+export async function confirmAction(
+  token: string,
+  approved: boolean,
+): Promise<{ success: boolean; message?: string; [key: string]: any }> {
   const res = await fetch(`${API_BASE}/api/chat/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, approved }),
   });
-  return res.json();
+  return safeJson<{ success: boolean; message?: string; [key: string]: any }>(res, '작업 확인 처리에 실패했습니다.');
 }
 
 export async function createInstance(data: {
@@ -188,19 +209,18 @@ export async function createInstance(data: {
   cpus: number;
   memory: number;
   diskSize: number;
-}) {
+}): Promise<any> {
   const res = await fetch(`${API_BASE}/api/infra/create`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return res.json();
+  return safeJson<any>(res, '인스턴스 생성 요청에 실패했습니다.');
 }
 
-export async function fetchSnapshots(node: string, vmid: number) {
+export async function fetchSnapshots(node: string, vmid: number): Promise<any[]> {
   const res = await fetch(`${API_BASE}/api/infra/snapshots?node=${node}&vmid=${vmid}`);
-  if (!res.ok) return [];
-  return res.json();
+  return safeJsonOrFallback<any[]>(res, []);
 }
 
 export async function createSnapshot(data: {
@@ -208,22 +228,22 @@ export async function createSnapshot(data: {
   vmid: number;
   snapname: string;
   description?: string;
-}) {
+}): Promise<any> {
   const res = await fetch(`${API_BASE}/api/infra/snapshot`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return res.json();
+  return safeJson<any>(res, '스냅샷 생성에 실패했습니다.');
 }
 
-export async function resizeVmDisk(node: string, vmid: number, size: string = '+10G') {
+export async function resizeVmDisk(node: string, vmid: number, size: string = '+10G'): Promise<any> {
   const res = await fetch(`${API_BASE}/api/infra/resize`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ node, vmid, disk: 'scsi0', size }),
   });
-  return res.json();
+  return safeJson<any>(res, '디스크 리사이즈에 실패했습니다.');
 }
 
 export interface ProxmoxNetwork {
@@ -261,28 +281,24 @@ export interface ClusterTopology {
 export async function fetchNetworks(node?: string): Promise<ProxmoxNetwork[]> {
   const url = node ? `${API_BASE}/api/infra/networks?node=${node}` : `${API_BASE}/api/infra/networks`;
   const res = await fetch(url);
-  if (!res.ok) return [];
-  return res.json();
+  return safeJsonOrFallback<ProxmoxNetwork[]>(res, []);
 }
 
 export async function fetchTasks(node?: string): Promise<ProxmoxTask[]> {
   const url = node ? `${API_BASE}/api/infra/tasks?node=${node}` : `${API_BASE}/api/infra/tasks`;
   const res = await fetch(url);
-  if (!res.ok) return [];
-  return res.json();
+  return safeJsonOrFallback<ProxmoxTask[]>(res, []);
 }
 
 export async function fetchTopology(): Promise<ClusterTopology> {
   const res = await fetch(`${API_BASE}/api/infra/topology`);
-  if (!res.ok) throw new Error('Failed to fetch cluster topology');
-  return res.json();
+  return safeJson<ClusterTopology>(res, '클러스터 토폴로지 정보를 불러오지 못했습니다.');
 }
 
 export async function fetchStorage(node?: string): Promise<ProxmoxStorage[]> {
   const url = node ? `${API_BASE}/api/infra/storage?node=${node}` : `${API_BASE}/api/infra/storage`;
   const res = await fetch(url);
-  if (!res.ok) return [];
-  return res.json();
+  return safeJsonOrFallback<ProxmoxStorage[]>(res, []);
 }
 
 export interface ResourceRequest {
@@ -324,14 +340,12 @@ export async function fetchResourceRequests(status?: string, requester?: string)
   if (requester) params.append('requester', requester);
   const query = params.toString() ? `?${params.toString()}` : '';
   const res = await fetch(`${API_BASE}/api/infra/requests${query}`);
-  if (!res.ok) return [];
-  return res.json();
+  return safeJsonOrFallback<ResourceRequest[]>(res, []);
 }
 
 export async function fetchResourceRequestStats(): Promise<ResourceRequestStats> {
   const res = await fetch(`${API_BASE}/api/infra/requests/stats`);
-  if (!res.ok) return { total: 0, pending: 0, approved: 0, rejected: 0 };
-  return res.json();
+  return safeJsonOrFallback<ResourceRequestStats>(res, { total: 0, pending: 0, approved: 0, rejected: 0 });
 }
 
 export async function createResourceRequest(data: {
@@ -347,8 +361,7 @@ export async function createResourceRequest(data: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to create resource request');
-  return res.json();
+  return safeJson<ResourceRequest>(res, '자원 신청서 등록에 실패했습니다.');
 }
 
 export async function reviewResourceRequest(
@@ -368,8 +381,7 @@ export async function reviewResourceRequest(
       body: JSON.stringify(data),
     },
   );
-  if (!res.ok) throw new Error('Failed to review resource request');
-  return res.json();
+  return safeJson<ResourceRequest>(res, '요청 검토 처리에 실패했습니다.');
 }
 
 export type AuthUserRole = 'DEV_TEAM' | 'INFRA_TEAM';
@@ -396,11 +408,7 @@ export async function loginUser(data: { email: string; password: string }): Prom
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(json.message || '로그인에 실패했습니다.');
-  }
-  return json;
+  return safeJson<AuthResponse>(res, '로그인에 실패했습니다.');
 }
 
 export async function registerUser(data: {
@@ -415,20 +423,15 @@ export async function registerUser(data: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(json.message || '회원가입에 실패했습니다.');
-  }
-  return json;
+  return safeJson<AuthResponse>(res, '회원가입에 실패했습니다.');
 }
 
 export async function fetchCurrentUser(token: string): Promise<UserProfile> {
   const res = await fetch(`${API_BASE}/api/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error('Failed to fetch user session');
-  const json = await res.json();
-  return json.user;
+  const data = await safeJson<{ success: boolean; user: UserProfile }>(res, '사용자 세션 확인에 실패했습니다.');
+  return data.user;
 }
 
 export async function logoutUser(token: string): Promise<void> {
