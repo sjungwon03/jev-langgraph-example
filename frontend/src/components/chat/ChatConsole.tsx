@@ -19,7 +19,7 @@ import {
 import { StreamChunk, confirmAction } from '@/lib/api';
 import { DecisionLogsModal } from './DecisionLogsModal';
 import { LangGraphVisualizerModal } from './LangGraphVisualizerModal';
-import { LangGraphCanvas } from './LangGraphCanvas';
+import { LangGraphCanvas, GraphExecutionState } from './LangGraphCanvas';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,7 +83,15 @@ export function ChatConsole() {
   const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
   const [showLiveGraph, setShowLiveGraph] = useState(true);
-  const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
+
+  // Real-time LangGraph execution state
+  const [executionState, setExecutionState] = useState<GraphExecutionState>({
+    activeNodeId: null,
+    visitedNodeIds: [],
+    isLlmActive: false,
+    isJevActive: false,
+  });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -108,7 +116,15 @@ export function ChatConsole() {
     ]);
     setInput('');
     setIsStreaming(true);
-    setActiveNodeId('router');
+
+    // 1. START -> Router: Trigger LLM reasoning
+    setExecutionState({
+      activeNodeId: 'router',
+      visitedNodeIds: ['__start__', 'router'],
+      isLlmActive: true,
+      isJevActive: false,
+      statusMessage: `질의 접수 ("${query.slice(0, 18)}..."): LLM 의도 분석 및 도구 매핑 중`,
+    });
 
     try {
       const response = await fetch('/api/chat/stream', {
@@ -141,18 +157,70 @@ export function ChatConsole() {
             try {
               const chunk: StreamChunk = JSON.parse(line.slice(6));
 
+              // State Machine visual transitions
               if (chunk.type === 'thought') {
-                setActiveNodeId('router');
+                setExecutionState((prev) => ({
+                  ...prev,
+                  activeNodeId: 'router',
+                  isLlmActive: true,
+                  statusMessage: chunk.content,
+                }));
               } else if (chunk.type === 'decision') {
-                setActiveNodeId(chunk.decision?.tool ? 'safety_check' : 'synthesizer');
+                const hasTool = !!chunk.decision?.tool;
+                setExecutionState((prev) => ({
+                  ...prev,
+                  intent: chunk.decision?.intent,
+                  decisionWhy: chunk.decision?.why,
+                  activeTool: chunk.decision?.tool,
+                  activeToolArgs: chunk.decision?.args,
+                  activeNodeId: hasTool ? 'safety_check' : 'synthesizer',
+                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, hasTool ? 'safety_check' : 'synthesizer'])),
+                  isLlmActive: !hasTool,
+                  isJevActive: false,
+                  statusMessage: hasTool
+                    ? `도구 결정: ${chunk.decision?.tool}() (보안 검증 진행)`
+                    : '일반 질의: 도구 미호출 (직접 응답 합성)',
+                }));
               } else if (chunk.type === 'confirmation_required') {
-                setActiveNodeId('safety_check');
+                setExecutionState((prev) => ({
+                  ...prev,
+                  activeNodeId: 'safety_check',
+                  isLlmActive: false,
+                  isJevActive: false,
+                  statusMessage: '보안 승인 필요: 파괴적 작업 검증 (사용자 확인 대기)',
+                }));
               } else if (chunk.type === 'tool_start') {
-                setActiveNodeId('tool_executor');
-              } else if (chunk.type === 'tool_end' || chunk.type === 'content') {
-                setActiveNodeId('synthesizer');
+                setExecutionState((prev) => ({
+                  ...prev,
+                  activeNodeId: 'tool_executor',
+                  activeTool: chunk.tool,
+                  activeToolArgs: chunk.input,
+                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'tool_executor'])),
+                  isLlmActive: false,
+                  isJevActive: true,
+                  statusMessage: `JEV Controller: Proxmox ${chunk.tool}() 실행 중...`,
+                }));
+              } else if (chunk.type === 'tool_end') {
+                setExecutionState((prev) => ({
+                  ...prev,
+                  activeNodeId: 'synthesizer',
+                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'synthesizer'])),
+                  isLlmActive: true,
+                  isJevActive: false,
+                  statusMessage: '도구 실행 완료. LLM 응답 합성 중...',
+                }));
+              } else if (chunk.type === 'content') {
+                setExecutionState((prev) => ({
+                  ...prev,
+                  activeNodeId: 'synthesizer',
+                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'synthesizer'])),
+                  isLlmActive: true,
+                  isJevActive: false,
+                  statusMessage: '최종 한국어 마크다운 답변 스트리밍 중...',
+                }));
               }
 
+              // Update message bubble content
               setMessages((prev) =>
                 prev.map((msg) => {
                   if (msg.id !== assistantMsgId) return msg;
@@ -208,13 +276,36 @@ export function ChatConsole() {
       );
     } finally {
       setIsStreaming(false);
-      setActiveNodeId('__end__');
-      setTimeout(() => setActiveNodeId(null), 2500);
+      setExecutionState((prev) => ({
+        ...prev,
+        activeNodeId: '__end__',
+        visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, '__end__'])),
+        isLlmActive: false,
+        isJevActive: false,
+        statusMessage: 'LangGraph 상태 머신 실행 완료',
+      }));
+
+      setTimeout(() => {
+        setExecutionState((prev) => ({
+          ...prev,
+          activeNodeId: null,
+        }));
+      }, 4000);
     }
   };
 
   const handleConfirmApproval = async (msgId: string, token: string, approved: boolean) => {
     try {
+      if (approved) {
+        setExecutionState((prev) => ({
+          ...prev,
+          activeNodeId: 'tool_executor',
+          visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'tool_executor'])),
+          isJevActive: true,
+          statusMessage: '승인 확인: JEV Controller 작업 즉시 실행 중...',
+        }));
+      }
+
       const res = await confirmAction(token, approved);
       setMessages((prev) =>
         prev.map((msg) => {
@@ -228,6 +319,16 @@ export function ChatConsole() {
           };
         }),
       );
+
+      if (approved) {
+        setExecutionState((prev) => ({
+          ...prev,
+          activeNodeId: '__end__',
+          visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, '__end__'])),
+          isJevActive: false,
+          statusMessage: '승인 작업 완료',
+        }));
+      }
     } catch (err: any) {
       alert(`승인 처리 실패: ${err.message}`);
     }
@@ -262,7 +363,7 @@ export function ChatConsole() {
           >
             <GitFork className="w-3.5 h-3.5 text-blue-400" />
             <span>실시간 그래프 {showLiveGraph ? 'ON' : 'OFF'}</span>
-            {activeNodeId && (
+            {executionState.activeNodeId && (
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-0.5" />
             )}
           </Button>
@@ -480,7 +581,7 @@ export function ChatConsole() {
 
         {/* Right: Live LangGraph Canvas Panel */}
         {showLiveGraph && (
-          <div className="flex w-[42%] min-w-[340px] max-w-[560px] flex-col h-full overflow-hidden bg-[#050811] shrink-0">
+          <div className="flex w-[42%] min-w-[340px] max-w-[560px] flex-col h-full overflow-hidden bg-[#040711] shrink-0">
             <div className="p-3 border-b border-slate-800/80 bg-slate-950/90 flex items-center justify-between text-xs shrink-0">
               <div className="flex items-center gap-2">
                 <GitFork className="w-4 h-4 text-blue-400" />
@@ -497,7 +598,11 @@ export function ChatConsole() {
               </Button>
             </div>
             <div className="flex-1 relative overflow-hidden">
-              <LangGraphCanvas activeNodeId={activeNodeId} compact={false} />
+              <LangGraphCanvas
+                executionState={executionState}
+                activeNodeId={executionState.activeNodeId}
+                compact={false}
+              />
             </div>
           </div>
         )}
@@ -513,7 +618,7 @@ export function ChatConsole() {
       <LangGraphVisualizerModal
         isOpen={isGraphModalOpen}
         onClose={() => setIsGraphModalOpen(false)}
-        activeNodeId={activeNodeId}
+        activeNodeId={executionState.activeNodeId}
       />
     </div>
   );
