@@ -13,8 +13,13 @@ import {
   Activity,
   GitFork,
   Maximize2,
-  PanelRightClose,
-  PanelRightOpen,
+  Plus,
+  Trash2,
+  MessagesSquare,
+  MessageSquare,
+  Clock,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { StreamChunk, confirmAction } from '@/lib/api';
 import { DecisionLogsModal } from './DecisionLogsModal';
@@ -26,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useUserRole } from '@/lib/role-context';
 
-interface Message {
+export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -49,13 +54,25 @@ interface Message {
   };
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: Message[];
+  executionState?: GraphExecutionState;
+}
+
+const STORAGE_SESSIONS_KEY = 'pve_chat_sessions_v2';
+const STORAGE_ACTIVE_ID_KEY = 'pve_active_session_id_v2';
+
 export function ChatConsole() {
   const { role, requesterName } = useUserRole();
 
   const devPrompts = [
+    '내 자원 요청 내역 조회',
     '테스트용 VM 발급 신청 (2C 4GB 20GB)',
     '101번 VM 디스크 20GB 증설 요청',
-    '내 자원 요청 내역 조회',
     '실행 중인 VM 목록',
   ];
 
@@ -68,16 +85,20 @@ export function ChatConsole() {
 
   const quickPrompts = role === 'INFRA_TEAM' ? infraPrompts : devPrompts;
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content:
-        role === 'INFRA_TEAM'
-          ? 'Proxmox VE 인프라 운영 콘솔입니다. 클러스터 자원 현황 조회, VM 전원 제어, 개발팀 자원 신청 티켓(REQ-XXXX) 심사 및 자동 배포를 수행할 수 있습니다.'
-          : '서비스 개발팀 인프라 셀프서비스 콘솔입니다. 필요한 서버 사양(CPU, RAM, Disk)과 용도를 입력하시면 인프라팀 승인 큐로 자원 요청서가 접수됩니다.',
-    },
-  ]);
+  const getWelcomeMessage = (currentRole: 'DEV_TEAM' | 'INFRA_TEAM'): Message => ({
+    id: `welcome-${Date.now()}`,
+    role: 'assistant',
+    content:
+      currentRole === 'INFRA_TEAM'
+        ? 'Proxmox VE 인프라 운영 콘솔입니다. 클러스터 자원 현황 조회, VM 전원 제어, 개발팀 자원 신청 티켓(REQ-XXXX) 심사 및 자동 배포를 수행할 수 있습니다.'
+        : '서비스 개발팀 인프라 셀프서비스 콘솔입니다. 필요한 서버 사양(CPU, RAM, Disk)과 용도를 입력하시면 인프라팀 승인 큐로 자원 요청서가 접수됩니다.',
+  });
+
+  // Sessions state
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string>('');
+  const [isSessionSidebarOpen, setIsSessionSidebarOpen] = useState(true);
+
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
@@ -94,6 +115,45 @@ export function ChatConsole() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // 1. Initial Load from LocalStorage
+  useEffect(() => {
+    try {
+      const savedSessions = localStorage.getItem(STORAGE_SESSIONS_KEY);
+      const savedActiveId = localStorage.getItem(STORAGE_ACTIVE_ID_KEY);
+
+      if (savedSessions) {
+        const parsed: ChatSession[] = JSON.parse(savedSessions);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSessions(parsed);
+          const active = parsed.find((s) => s.id === savedActiveId) || parsed[0];
+          setActiveSessionId(active.id);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse saved chat sessions from localStorage:', e);
+    }
+
+    // Default initial session
+    const initialSessionId = `session-${Date.now()}`;
+    const initialSession: ChatSession = {
+      id: initialSessionId,
+      title: '새 인프라 세션',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [getWelcomeMessage(role)],
+    };
+    setSessions([initialSession]);
+    setActiveSessionId(initialSessionId);
+    try {
+      localStorage.setItem(STORAGE_SESSIONS_KEY, JSON.stringify([initialSession]));
+      localStorage.setItem(STORAGE_ACTIVE_ID_KEY, initialSessionId);
+    } catch (e) {}
+  }, []);
+
+  const activeSession = sessions.find((s) => s.id === activeSessionId) || sessions[0];
+  const messages = activeSession ? activeSession.messages : [];
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -102,6 +162,98 @@ export function ChatConsole() {
     scrollToBottom();
   }, [messages, isStreaming]);
 
+  // Helper to persist session changes
+  const updateActiveSessionMessages = (
+    updater: (prevMessages: Message[]) => Message[],
+    forcedTitle?: string,
+  ) => {
+    setSessions((prevSessions) => {
+      const targetId = activeSessionId || prevSessions[0]?.id;
+      const nextSessions = prevSessions.map((s) => {
+        if (s.id !== targetId) return s;
+        const newMessages = updater(s.messages);
+        let title = s.title;
+        if (forcedTitle) {
+          title = forcedTitle;
+        } else if (s.title === '새 인프라 세션' || s.title === '새로운 대화') {
+          const firstUserMsg = newMessages.find((m) => m.role === 'user');
+          if (firstUserMsg) {
+            title = firstUserMsg.content.slice(0, 24);
+          }
+        }
+        return {
+          ...s,
+          title,
+          updatedAt: new Date().toISOString(),
+          messages: newMessages,
+        };
+      });
+
+      try {
+        localStorage.setItem(STORAGE_SESSIONS_KEY, JSON.stringify(nextSessions));
+      } catch (e) {}
+
+      return nextSessions;
+    });
+  };
+
+  const handleCreateNewSession = () => {
+    const newSessionId = `session-${Date.now()}`;
+    const newSession: ChatSession = {
+      id: newSessionId,
+      title: '새 인프라 세션',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [getWelcomeMessage(role)],
+    };
+    const nextSessions = [newSession, ...sessions];
+    setSessions(nextSessions);
+    setActiveSessionId(newSessionId);
+    setExecutionState({
+      activeNodeId: null,
+      visitedNodeIds: [],
+      isLlmActive: false,
+      isJevActive: false,
+    });
+    try {
+      localStorage.setItem(STORAGE_SESSIONS_KEY, JSON.stringify(nextSessions));
+      localStorage.setItem(STORAGE_ACTIVE_ID_KEY, newSessionId);
+    } catch (e) {}
+  };
+
+  const handleSelectSession = (sessionId: string) => {
+    setActiveSessionId(sessionId);
+    setExecutionState({
+      activeNodeId: null,
+      visitedNodeIds: [],
+      isLlmActive: false,
+      isJevActive: false,
+    });
+    try {
+      localStorage.setItem(STORAGE_ACTIVE_ID_KEY, sessionId);
+    } catch (e) {}
+  };
+
+  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (sessions.length <= 1) {
+      // If only 1 session exists, reset it to empty
+      handleCreateNewSession();
+      return;
+    }
+    const filtered = sessions.filter((s) => s.id !== sessionId);
+    setSessions(filtered);
+    if (activeSessionId === sessionId) {
+      setActiveSessionId(filtered[0].id);
+    }
+    try {
+      localStorage.setItem(STORAGE_SESSIONS_KEY, JSON.stringify(filtered));
+      if (activeSessionId === sessionId) {
+        localStorage.setItem(STORAGE_ACTIVE_ID_KEY, filtered[0].id);
+      }
+    } catch (e) {}
+  };
+
   const handleSend = async (textToSend?: string) => {
     const query = textToSend || input;
     if (!query.trim() || isStreaming) return;
@@ -109,11 +261,16 @@ export function ChatConsole() {
     const userMsgId = `user-${Date.now()}`;
     const assistantMsgId = `asst-${Date.now()}`;
 
-    setMessages((prev) => [
-      ...prev,
-      { id: userMsgId, role: 'user', content: query },
-      { id: assistantMsgId, role: 'assistant', content: '', thought: '의도 분석 및 실행 계획 수립 중...' },
-    ]);
+    // Add user & empty assistant messages to active session
+    updateActiveSessionMessages(
+      (prev) => [
+        ...prev,
+        { id: userMsgId, role: 'user', content: query },
+        { id: assistantMsgId, role: 'assistant', content: '', thought: '의도 분석 및 실행 계획 수립 중...' },
+      ],
+      activeSession?.title === '새 인프라 세션' ? query.slice(0, 24) : undefined,
+    );
+
     setInput('');
     setIsStreaming(true);
 
@@ -132,7 +289,7 @@ export function ChatConsole() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: query,
-          threadId: 'main-thread',
+          threadId: activeSessionId || 'main-thread',
           role,
           requesterName,
         }),
@@ -178,23 +335,22 @@ export function ChatConsole() {
                   isLlmActive: !hasTool,
                   isJevActive: false,
                   statusMessage: hasTool
-                    ? `도구 결정: ${chunk.decision?.tool}() (보안 검증 진행)`
-                    : '일반 질의: 도구 미호출 (직접 응답 합성)',
+                    ? `도구 결정 [${chunk.decision?.tool}]: JEV 안전 거버넌스 가드레일 검증`
+                    : '일반 질문: Synthesizer 대화 답변 생성',
                 }));
               } else if (chunk.type === 'confirmation_required') {
                 setExecutionState((prev) => ({
                   ...prev,
                   activeNodeId: 'safety_check',
+                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'safety_check'])),
                   isLlmActive: false,
                   isJevActive: false,
-                  statusMessage: '보안 승인 필요: 파괴적 작업 검증 (사용자 확인 대기)',
+                  statusMessage: '⚠️ 고위험 작업 감지: 사용자 Human-in-the-Loop 승인 대기',
                 }));
               } else if (chunk.type === 'tool_start') {
                 setExecutionState((prev) => ({
                   ...prev,
                   activeNodeId: 'tool_executor',
-                  activeTool: chunk.tool,
-                  activeToolArgs: chunk.input,
                   visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'tool_executor'])),
                   isLlmActive: false,
                   isJevActive: true,
@@ -207,46 +363,54 @@ export function ChatConsole() {
                   visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'synthesizer'])),
                   isLlmActive: true,
                   isJevActive: false,
-                  statusMessage: '도구 실행 완료. LLM 응답 합성 중...',
+                  statusMessage: '실행 결과 수신: 최종 대화 응답 합성 중',
                 }));
-              } else if (chunk.type === 'content') {
+              } else if (chunk.type === 'done') {
                 setExecutionState((prev) => ({
                   ...prev,
-                  activeNodeId: 'synthesizer',
-                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'synthesizer'])),
-                  isLlmActive: true,
+                  activeNodeId: '__end__',
+                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, '__end__'])),
+                  isLlmActive: false,
                   isJevActive: false,
-                  statusMessage: '최종 한국어 마크다운 답변 스트리밍 중...',
+                  statusMessage: 'LangGraph 워크플로우 정상 완료',
                 }));
               }
 
-              // Update message bubble content
-              setMessages((prev) =>
+              // Update active session messages
+              updateActiveSessionMessages((prev) =>
                 prev.map((msg) => {
                   if (msg.id !== assistantMsgId) return msg;
 
                   if (chunk.type === 'thought') {
                     return { ...msg, thought: chunk.content };
                   }
-                  if (chunk.type === 'decision' && chunk.decision) {
-                    return { ...msg, decision: chunk.decision };
-                  }
-                  if (chunk.type === 'tool_start') {
-                    const calls = msg.toolCalls || [];
+                  if (chunk.type === 'decision') {
                     return {
                       ...msg,
-                      thought: undefined,
-                      toolCalls: [...calls, { tool: chunk.tool || '', input: chunk.input }],
+                      decision: chunk.decision,
+                      thought: `도구 결정: ${chunk.decision?.tool || '없음 (직접 답변)'}`,
+                    };
+                  }
+                  if (chunk.type === 'tool_start') {
+                    const currentCalls = msg.toolCalls || [];
+                    return {
+                      ...msg,
+                      thought: `도구 실행 중: ${chunk.tool || ''}...`,
+                      toolCalls: [...currentCalls, { tool: chunk.tool || '', input: chunk.input }],
                     };
                   }
                   if (chunk.type === 'tool_end') {
-                    const calls = [...(msg.toolCalls || [])];
-                    if (calls.length > 0) {
-                      calls[calls.length - 1].output = chunk.output;
-                    }
-                    return { ...msg, toolCalls: calls };
+                    const currentCalls = msg.toolCalls || [];
+                    const updated = currentCalls.map((tc) =>
+                      tc.tool === (chunk.tool || '') ? { ...tc, output: chunk.output } : tc,
+                    );
+                    return {
+                      ...msg,
+                      thought: '결과 종합 중...',
+                      toolCalls: updated,
+                    };
                   }
-                  if (chunk.type === 'confirmation_required' && chunk.confirmation) {
+                  if (chunk.type === 'confirmation_required') {
                     return {
                       ...msg,
                       confirmation: chunk.confirmation,
@@ -267,7 +431,7 @@ export function ChatConsole() {
         }
       }
     } catch (err: any) {
-      setMessages((prev) =>
+      updateActiveSessionMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMsgId
             ? { ...msg, content: `작업 중 오류가 발생했습니다: ${err.message}`, thought: undefined }
@@ -307,7 +471,7 @@ export function ChatConsole() {
       }
 
       const res = await confirmAction(token, approved);
-      setMessages((prev) =>
+      updateActiveSessionMessages((prev) =>
         prev.map((msg) => {
           if (msg.id !== msgId) return msg;
           return {
@@ -334,16 +498,64 @@ export function ChatConsole() {
     }
   };
 
+  const formatSessionTime = (isoString: string) => {
+    try {
+      const d = new Date(isoString);
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      if (isToday) {
+        return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      }
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    } catch {
+      return '';
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950">
       {/* Header Toolbar */}
-      <div className="flex items-center justify-between px-6 py-2.5 bg-slate-950 border-b border-slate-800/80 text-xs shrink-0">
-        <div className="flex items-center gap-2.5">
-          <span className="font-semibold text-slate-200">인프라 제어 콘솔</span>
-          <span className="text-[11px] text-slate-500 font-mono">• LangGraph Orchestration</span>
+      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-950 border-b border-slate-800/80 text-xs shrink-0">
+        <div className="flex items-center gap-2">
+          {/* Session Sidebar Toggle Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsSessionSidebarOpen(!isSessionSidebarOpen)}
+            className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-900 border border-slate-800 h-7 px-2"
+            title="대화 세션 목록 열기/닫기"
+          >
+            {isSessionSidebarOpen ? (
+              <PanelLeftClose className="w-3.5 h-3.5 text-blue-400" />
+            ) : (
+              <PanelLeftOpen className="w-3.5 h-3.5 text-slate-400" />
+            )}
+            <span className="font-medium">세션 목록</span>
+            <Badge variant="outline" className="text-[10px] px-1 py-0 border-slate-700 bg-slate-900 text-slate-300">
+              {sessions.length}
+            </Badge>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCreateNewSession}
+            className="flex items-center gap-1 text-xs text-emerald-400 border-emerald-900/60 bg-emerald-950/30 hover:bg-emerald-900/40 h-7 px-2.5"
+            title="새 대화 세션 시작"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>새 세션</span>
+          </Button>
+
+          <div className="h-4 w-px bg-slate-800 mx-1" />
+
+          <span className="font-semibold text-slate-200 truncate max-w-[200px]" title={activeSession?.title}>
+            {activeSession?.title || '인프라 제어 콘솔'}
+          </span>
+          <span className="text-[11px] text-slate-500 font-mono hidden md:inline">• LangGraph Orchestration</span>
           <Badge
             variant={role === 'INFRA_TEAM' ? 'warning' : 'outline'}
-            className="text-[10px] py-0 px-2 font-mono"
+            className="text-[10px] py-0 px-2 font-mono shrink-0"
           >
             {role === 'INFRA_TEAM' ? '인프라팀' : '개발팀'}
           </Badge>
@@ -377,7 +589,7 @@ export function ChatConsole() {
             title="그래프 전체 화면 모달"
           >
             <Maximize2 className="w-3.5 h-3.5" />
-            <span>상세 그래프</span>
+            <span className="hidden sm:inline">상세 그래프</span>
           </Button>
 
           {/* Execution Trace Logs Button */}
@@ -388,14 +600,91 @@ export function ChatConsole() {
             className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-800/80 h-7 px-2.5"
           >
             <Activity className="w-3.5 h-3.5 text-slate-400" />
-            <span>실행 추적 로그</span>
+            <span className="hidden sm:inline">실행 로그</span>
           </Button>
         </div>
       </div>
 
-      {/* Main Split View: Left (Chat) + Right (Live LangGraph Canvas) */}
+      {/* Main Split View: Left (Session Sidebar) + Center (Chat) + Right (Live LangGraph Canvas) */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left: Chat Container */}
+        {/* 1. Left Collapsible Session Sidebar */}
+        {isSessionSidebarOpen && (
+          <div className="w-64 min-w-[240px] max-w-[280px] bg-slate-950/95 border-r border-slate-800/80 flex flex-col h-full shrink-0 select-none">
+            {/* Session Sidebar Header */}
+            <div className="p-3 border-b border-slate-800/80 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+                <MessagesSquare className="w-4 h-4 text-blue-400" />
+                <span>대화 세션 내역</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCreateNewSession}
+                className="h-6 px-2 text-[11px] gap-1 text-slate-300 hover:text-white border-slate-700 bg-slate-900 hover:bg-slate-800"
+              >
+                <Plus className="w-3 h-3" />
+                <span>생성</span>
+              </Button>
+            </div>
+
+            {/* Session List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {sessions.map((sess) => {
+                const isActive = sess.id === activeSessionId;
+                const msgCount = sess.messages.filter((m) => m.role === 'user').length;
+
+                return (
+                  <div
+                    key={sess.id}
+                    onClick={() => handleSelectSession(sess.id)}
+                    className={`group relative flex items-start gap-2.5 p-2.5 rounded-lg cursor-pointer transition-all border ${
+                      isActive
+                        ? 'bg-blue-950/50 border-blue-600/60 shadow-sm shadow-blue-500/10 text-slate-100'
+                        : 'bg-slate-900/40 border-slate-800/50 hover:bg-slate-900/90 hover:border-slate-700 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <MessageSquare
+                      className={`w-4 h-4 mt-0.5 shrink-0 ${
+                        isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-400'
+                      }`}
+                    />
+
+                    <div className="flex-1 min-w-0 pr-5">
+                      <div className="text-xs font-medium truncate leading-tight">
+                        {sess.title || '새 인프라 세션'}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500">
+                        <span className="flex items-center gap-0.5">
+                          <Clock className="w-2.5 h-2.5" />
+                          {formatSessionTime(sess.updatedAt)}
+                        </span>
+                        <span>•</span>
+                        <span>질의 {msgCount}건</span>
+                      </div>
+                    </div>
+
+                    {/* Delete Session Button */}
+                    <button
+                      onClick={(e) => handleDeleteSession(sess.id, e)}
+                      title="세션 삭제"
+                      className="absolute right-2 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Sidebar Footer info */}
+            <div className="p-2.5 border-t border-slate-800/80 text-[10px] text-slate-500 flex items-center justify-between">
+              <span>총 {sessions.length}개 세션 보관 중</span>
+              <span className="text-slate-600">Auto-saved</span>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Center: Chat Container */}
         <div
           className={`flex flex-col h-full overflow-hidden transition-all duration-300 ${
             showLiveGraph ? 'flex-1 min-w-[320px] border-r border-slate-800/80' : 'w-full'
@@ -419,99 +708,115 @@ export function ChatConsole() {
                 <div className="space-y-1.5 max-w-[88%]">
                   {/* Message Bubble */}
                   <div
-                    className={`p-3.5 rounded-xl text-xs leading-relaxed ${
+                    className={`p-4 rounded-xl text-sm leading-relaxed ${
                       msg.role === 'user'
-                        ? 'bg-slate-800/90 text-slate-100 rounded-tr-none border border-slate-700/60 shadow-sm'
-                        : 'bg-slate-900/50 rounded-tl-none border border-slate-800/90 text-slate-200'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-slate-900/90 text-slate-200 border border-slate-800/90 shadow-sm'
                     }`}
                   >
-                    {/* Active Thought / Reasoning Indicator */}
-                    {msg.thought && (
-                      <div className="flex items-center gap-2 mb-2 text-[11px] text-slate-400 font-mono bg-slate-950/70 border border-slate-800 px-2.5 py-1 rounded-md">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" />
+                    {/* Live Thought Streaming Badge */}
+                    {msg.thought && isStreaming && msg.id === messages[messages.length - 1]?.id && (
+                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-800 text-xs text-blue-400 font-mono animate-pulse">
+                        <Activity className="w-3.5 h-3.5 animate-spin" />
                         <span>{msg.thought}</span>
                       </div>
                     )}
 
-                    {/* Collapsible Execution Trace */}
-                    {(msg.decision || (msg.toolCalls && msg.toolCalls.length > 0)) && (
-                      <details className="group mb-2.5 rounded-lg border border-slate-800/80 bg-slate-950/60 text-xs overflow-hidden">
-                        <summary className="flex items-center justify-between px-3 py-1.5 cursor-pointer hover:bg-slate-900/60 select-none text-slate-400 font-mono text-[11px]">
-                          <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                            <span>
-                              {msg.decision?.tool ? `실행: ${msg.decision.tool}()` : '의도 분석 완료'}
+                    {/* Decision info card */}
+                    {msg.decision && (
+                      <div className="mb-3 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs space-y-1.5">
+                        <div className="flex items-center justify-between text-slate-400 font-mono">
+                          <span className="flex items-center gap-1.5 text-blue-400 font-semibold">
+                            <GitFork className="w-3 h-3" />
+                            {msg.decision.intent}
+                          </span>
+                          {msg.decision.latencyMs && (
+                            <span className="text-[10px] text-slate-500">
+                              {msg.decision.latencyMs}ms
                             </span>
-                            {msg.decision?.latencyMs && (
-                              <span className="text-slate-500 font-sans">
-                                • {msg.decision.latencyMs}ms
+                          )}
+                        </div>
+                        <div className="text-slate-300 text-[11px] leading-snug">
+                          {msg.decision.why}
+                        </div>
+                        {msg.decision.tool && (
+                          <div className="pt-1 flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
+                            <span>호출 도구:</span>
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-800 bg-emerald-950/50">
+                              {msg.decision.tool}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Tool Calls execution record */}
+                    {msg.toolCalls && msg.toolCalls.length > 0 && (
+                      <div className="mb-3 space-y-1.5">
+                        {msg.toolCalls.map((tc, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2 rounded bg-slate-950/50 border border-slate-800/70 font-mono text-xs"
+                          >
+                            <div className="flex items-center justify-between text-slate-400">
+                              <span className="text-purple-400">⚡ {tc.tool}</span>
+                              <span className="text-[10px] text-slate-500">
+                                {tc.output ? '완료' : '실행 중...'}
                               </span>
+                            </div>
+                            {tc.output && (
+                              <div className="mt-1 text-[11px] text-slate-400 max-h-24 overflow-y-auto">
+                                <pre className="whitespace-pre-wrap">{JSON.stringify(tc.output, null, 2)}</pre>
+                              </div>
                             )}
                           </div>
-                          <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-open:rotate-180 transition-transform" />
-                        </summary>
-                        <div className="px-3 py-2.5 border-t border-slate-800/60 text-[11px] space-y-2 bg-slate-900/40 text-slate-300">
-                          {msg.decision?.why && (
-                            <div>
-                              <span className="text-slate-400 font-medium">판단 근거: </span>
-                              <span className="text-slate-300">{msg.decision.why}</span>
-                            </div>
-                          )}
-                          {msg.decision?.safetyEvaluation && (
-                            <div className="text-[10px] text-slate-400 font-mono">
-                              보안 등급: {msg.decision.safetyEvaluation}
-                            </div>
-                          )}
-                          {msg.toolCalls?.map((tc, idx) => (
-                            <div
-                              key={idx}
-                              className="font-mono text-[10px] text-slate-300 bg-slate-950 p-2 rounded border border-slate-800 overflow-x-auto"
-                            >
-                              <div className="text-slate-400 font-semibold mb-0.5">도구 호출 인수:</div>
-                              <code>{JSON.stringify(tc.input, null, 2)}</code>
-                            </div>
-                          ))}
-                        </div>
-                      </details>
+                        ))}
+                      </div>
                     )}
 
-                    {/* Content Render */}
-                    {msg.role === 'assistant' ? (
+                    {/* Main Content Markdown */}
+                    {msg.content ? (
                       <MarkdownRenderer content={msg.content} />
-                    ) : (
-                      <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
-                    )}
+                    ) : isStreaming ? (
+                      <div className="flex items-center gap-1.5 py-1 text-slate-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce delay-100" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce delay-200" />
+                      </div>
+                    ) : null}
 
-                    {/* Human-in-the-loop Confirmation Card */}
+                    {/* Safety Gate Confirmation Card (HITL) */}
                     {msg.confirmation && (
-                      <div className="mt-3 p-3 bg-amber-950/20 border border-amber-800/50 rounded-lg space-y-2.5">
-                        <div className="flex items-center gap-2 text-amber-300 font-medium text-xs">
-                          <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span>보안 승인 필요: 파괴적 작업 검증</span>
+                      <div className="mt-3 p-3.5 rounded-lg bg-amber-950/30 border border-amber-600/50 space-y-2.5">
+                        <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs">
+                          <ShieldAlert className="w-4 h-4 shrink-0" />
+                          <span>파괴적 고위험 작업 확인 (보안 승인 필요)</span>
                         </div>
-                        <div className="text-[11px] text-slate-300 leading-normal">
+                        <div className="text-xs text-slate-300">
                           {msg.confirmation.description}
                         </div>
-                        <div className="flex items-center gap-2 pt-1">
+                        <div className="flex items-center gap-2 pt-1 font-mono text-xs text-slate-400">
+                          <span>노드: {msg.confirmation.node}</span>
+                          <span>•</span>
+                          <span>VMID: {msg.confirmation.vmid}</span>
+                        </div>
+                        <div className="flex items-center gap-2 pt-2">
                           <Button
-                            variant="destructive"
                             size="sm"
-                            onClick={() =>
-                              handleConfirmApproval(msg.id, msg.confirmation!.token, true)
-                            }
-                            className="flex items-center gap-1.5 text-xs h-7 px-3 font-medium"
+                            onClick={() => handleConfirmApproval(msg.id, msg.confirmation!.token, true)}
+                            className="bg-red-600 hover:bg-red-700 text-white text-xs h-7 px-3 font-semibold"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" /> 승인 및 실행
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                            승인 및 실행
                           </Button>
                           <Button
-                            variant="outline"
                             size="sm"
-                            onClick={() =>
-                              handleConfirmApproval(msg.id, msg.confirmation!.token, false)
-                            }
-                            className="flex items-center gap-1.5 text-xs h-7 px-3 text-slate-400 border-slate-700 hover:text-white"
+                            variant="outline"
+                            onClick={() => handleConfirmApproval(msg.id, msg.confirmation!.token, false)}
+                            className="border-slate-700 hover:bg-slate-800 text-slate-300 text-xs h-7 px-3"
                           >
-                            <XCircle className="w-3.5 h-3.5" /> 취소
+                            <XCircle className="w-3.5 h-3.5 mr-1" />
+                            취소 (반려)
                           </Button>
                         </div>
                       </div>
@@ -520,7 +825,7 @@ export function ChatConsole() {
                 </div>
 
                 {msg.role === 'user' && (
-                  <div className="w-7 h-7 rounded-md bg-slate-800 border border-slate-700/80 flex items-center justify-center text-slate-300 shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm">
                     <User className="w-3.5 h-3.5" />
                   </div>
                 )}
@@ -529,81 +834,66 @@ export function ChatConsole() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Prompts Chips */}
-          <div className="px-6 py-2 border-t border-slate-800/80 bg-slate-950 flex items-center gap-2 overflow-x-auto shrink-0">
-            <span className="text-[11px] text-slate-500 flex items-center gap-1 shrink-0 font-medium">
-              <ListFilter className="w-3 h-3 text-slate-400" /> 추천:
+          {/* Quick Prompts Bar */}
+          <div className="px-6 py-2 border-t border-slate-900 bg-slate-950/70 flex items-center gap-2 overflow-x-auto text-xs shrink-0">
+            <span className="text-[11px] text-slate-500 font-medium shrink-0 flex items-center gap-1">
+              <ListFilter className="w-3 h-3 text-slate-400" />
+              추천:
             </span>
-            {quickPrompts.map((p, idx) => (
-              <Button
+            {quickPrompts.map((prompt, idx) => (
+              <button
                 key={idx}
-                variant="outline"
-                size="sm"
-                onClick={() => handleSend(p)}
+                onClick={() => handleSend(prompt)}
                 disabled={isStreaming}
-                className="rounded-md text-[11px] text-slate-300 border-slate-800 bg-slate-900/60 hover:bg-slate-800 hover:text-white h-6 px-2.5 shrink-0"
+                className="whitespace-nowrap px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800/80 text-slate-300 hover:text-white border border-slate-800 transition-colors disabled:opacity-40 text-xs"
               >
-                {p}
-              </Button>
+                {prompt}
+              </button>
             ))}
           </div>
 
-          {/* Input area */}
-          <div className="p-4 border-t border-slate-800/80 bg-slate-950 shrink-0">
+          {/* Input Bar */}
+          <div className="p-4 border-t border-slate-800/80 bg-slate-950/95 shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSend();
               }}
-              className="flex gap-2 max-w-4xl mx-auto"
+              className="flex items-center gap-2"
             >
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
                   role === 'INFRA_TEAM'
-                    ? '인프라 명령 입력 (예: REQ-1001 승인, 104번 VM 시작, 105번 삭제)'
-                    : '자원 요청서 작성 (예: 2코어 4기가 램 20GB 디스크로 웹서버 신청)'
+                    ? '인프라 명령 입력 (예: "대기 중인 자원 요청 큐 조회", "101번 VM 기동")...'
+                    : '요청 입력 (예: "내 자원 요청 내역 조회", "테스트용 VM 2C 4GB 20GB 신청")...'
                 }
                 disabled={isStreaming}
-                className="flex-1 bg-slate-900/80 border-slate-800 text-slate-100 placeholder:text-slate-500 text-xs h-10 focus-visible:ring-1 focus-visible:ring-slate-600 focus-visible:border-slate-600 rounded-lg"
+                className="flex-1 bg-slate-900/90 border-slate-800 focus-visible:ring-1 focus-visible:ring-blue-500 text-sm h-10"
               />
               <Button
                 type="submit"
                 disabled={isStreaming || !input.trim()}
-                className="bg-slate-100 hover:bg-white text-slate-900 font-semibold px-4 h-10 rounded-lg text-xs transition-colors shrink-0"
+                className="bg-blue-600 hover:bg-blue-500 text-white px-4 h-10 shrink-0 font-medium"
               >
-                <Send className="w-3.5 h-3.5 mr-1" /> 전송
+                <Send className="w-4 h-4 mr-1.5" />
+                <span>전송</span>
               </Button>
             </form>
           </div>
         </div>
 
-        {/* Right: Live LangGraph Canvas Panel */}
+        {/* 3. Right: Live LangGraph Canvas Split Panel */}
         {showLiveGraph && (
-          <div className="flex w-[42%] min-w-[340px] max-w-[560px] flex-col h-full overflow-hidden bg-[#040711] shrink-0">
-            <div className="p-3 border-b border-slate-800/80 bg-slate-950/90 flex items-center justify-between text-xs shrink-0">
-              <div className="flex items-center gap-2">
-                <GitFork className="w-4 h-4 text-blue-400" />
-                <span className="font-semibold text-slate-200">실시간 LangGraph 실행 캔버스</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowLiveGraph(false)}
-                className="h-6 w-6 p-0 text-slate-400 hover:text-slate-200"
-                title="패널 닫기"
-              >
-                <PanelRightClose className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-            <div className="flex-1 relative overflow-hidden">
-              <LangGraphCanvas
-                executionState={executionState}
-                activeNodeId={executionState.activeNodeId}
-                compact={false}
-              />
-            </div>
+          <div className="w-[42%] min-w-[340px] max-w-[560px] flex flex-col h-full bg-slate-950 shrink-0">
+            <LangGraphCanvas
+              executionState={executionState}
+              onSelectNode={(nodeId) => {
+                console.log('Selected node on live canvas:', nodeId);
+              }}
+              className="h-full"
+            />
           </div>
         )}
       </div>
@@ -614,12 +904,11 @@ export function ChatConsole() {
         onClose={() => setIsDecisionModalOpen(false)}
       />
 
-      {/* LangGraph Visualizer Modal */}
+      {/* LangGraph Visualizer Fullscreen Modal */}
       <LangGraphVisualizerModal
         isOpen={isGraphModalOpen}
         onClose={() => setIsGraphModalOpen(false)}
         executionState={executionState}
-        activeNodeId={executionState.activeNodeId}
       />
     </div>
   );

@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Post, Res } from '@nestjs/common';
-import { ChatService } from './chat.service';
+import { Body, Controller, Delete, Get, Param, Post, Res } from '@nestjs/common';
+import { ChatService, StoredMessage } from './chat.service';
 import { ChatMessageInputDto, ConfirmActionDto } from '@nest-msa/contracts';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -21,10 +21,22 @@ export class ChatController {
     return this.chatService.confirmAction(dto);
   }
 
+  @Get('sessions')
+  @ApiOperation({ summary: 'Get list of active conversation threads/sessions' })
+  getSessions() {
+    return this.chatService.getSessions();
+  }
+
   @Get('history/:threadId')
   @ApiOperation({ summary: 'Get conversation history for a specific thread' })
   getHistory(@Param('threadId') threadId: string) {
     return this.chatService.getHistory(threadId);
+  }
+
+  @Delete('history/:threadId')
+  @ApiOperation({ summary: 'Delete conversation history for a specific thread' })
+  deleteHistory(@Param('threadId') threadId: string) {
+    return this.chatService.clearHistory(threadId);
   }
 
   @Get('graph')

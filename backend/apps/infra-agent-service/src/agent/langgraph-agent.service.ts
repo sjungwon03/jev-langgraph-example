@@ -306,12 +306,14 @@ export class LangGraphAgentService {
 
 [거버넌스 및 도구 선택 규칙]
 1. 사용자 역할이 DEV_TEAM(서비스 개발팀)인 경우:
-   - 가상머신 생성/발급, 디스크 증설, 인스턴스 삭제 등 인프라 변경 작업은 직접 실행하지 않고 반드시 'create_resource_request' 도구로 자원 승인 티켓을 발급해야 합니다.
-   - 프롬프트를 분석하여 title, reason, type('CREATE_VM'|'RESIZE_DISK'|'DELETE_VM')을 결정하고, spec(cores, memory MB, disk GB, type)을 산출하세요.
-     * 사용자가 명시한 수치(예: 8코어, 16GB, 100G)가 있다면 최우선 반영하세요.
-     * 명시되지 않은 경우, 사용자의 목적(예: 머신러닝/AI는 8C 16GB 100GB, DB는 4C 8GB 50GB, 웹/테스트는 2C 4GB 30GB)을 스스로 지능적으로 판단하여 적절한 사양을 산출하세요.
-   - 클러스터 현황이나 VM 목록 조회는 'cluster_resources' 또는 'list_nodes'를 호출하세요.
-   - 본인이 신청한 티켓 목록 확인은 'list_resource_requests'를 호출하세요.
+   - 🚨 [최우선 규칙: 자원 요청서 '조회' vs '신청' 절대 구분]:
+     * 사용자가 "내 자원 요청 내역 조회", "자원 신청 현황", "신청한 티켓 확인", "요청 내역 보여줘", "내가 신청한 목록" 등 기존 신청 내역/목록/대기열/상태 조회를 요구하는 경우:
+       -> 절대로 'create_resource_request'를 호출하지 마세요!
+       -> 반드시 'list_resource_requests'를 호출하세요! (args: {})
+     * 사용자가 실제로 신규 VM 생성이나 디스크 증설을 신청/발급해달라고 요구하는 경우에만:
+       -> 'create_resource_request' 도구를 호출하여 티켓을 발급하세요.
+       -> title, reason, type('CREATE_VM'|'RESIZE_DISK'|'DELETE_VM')을 결정하고, spec(cores, memory MB, disk GB, type)을 산출하세요.
+   - 클러스터 전체 노드 현황이나 VM 목록 조회는 'cluster_resources' 또는 'list_nodes'를 호출하세요.
 
 2. 사용자 역할이 INFRA_TEAM(인프라 관리팀)인 경우:
    - 자원 요청 목록/대기열 조회가 인입되면 'list_resource_requests'를 호출하세요.
@@ -380,9 +382,22 @@ export class LangGraphAgentService {
             };
           }
 
+          // Deterministic Guardrail: If user asked for inquiry/history of requests, force list_resource_requests
+          const isQueryIntent = /(조회|내역|목록|리스트|상태|현황|확인|보여줘|알려줘|어떻게 돼|있어\?)/i.test(text);
+          const isCreateVerb = /(신청해|만들어|생성해|발급해|추가해|증설해|삭제해)/i.test(text);
+          if (toolToCall?.name === 'create_resource_request' && isQueryIntent && !isCreateVerb) {
+            this.logger.warn(`🛡️ [Guardrail] Auto-corrected misclassified query intent "${text}" to list_resource_requests`);
+            toolToCall = {
+              name: 'list_resource_requests',
+              args: {},
+            };
+          }
+
           const decision = {
-            intent: parsed.intent,
-            decisionWhy: parsed.decisionWhy || parsed.why || '사용자 의도 분석 완료',
+            intent: toolToCall?.name === 'list_resource_requests' ? 'list_resource_requests' : parsed.intent,
+            decisionWhy: toolToCall?.name === 'list_resource_requests'
+              ? '사용자 자원 신청 내역 및 대기열 조회'
+              : (parsed.decisionWhy || parsed.why || '사용자 의도 분석 완료'),
             safetyEvaluation: parsed.safetyEvaluation || 'SAFE',
             toolToCall,
           };
@@ -495,6 +510,11 @@ export class LangGraphAgentService {
         const systemPrompt = `당신은 Proxmox VE 가상화 인프라 전담 AI 어시스턴트입니다.
 사용자의 요청과 도구 실행 결과를 바탕으로 친절하고 자연스러운 한국어 마크다운 대화 응답을 작성하세요.
 - 작업이 성공했다면 결과의 핵심 내용(스펙, 노드, VMID, 승인 번호 등)을 읽기 쉬운 마크다운(표 또는 글머리 기호)으로 요약하여 답변하세요.
+- 만약 'list_resource_requests' 조회 결과인 경우:
+  * 내역이 비어있거나 항목이 없다면: "현재 접수되었거나 대기 중인 자원 요청 내역이 없습니다."라고 친절히 안내하세요.
+  * 내역이 있다면: [요청 번호(ID), 제목, 유형, 신청자, 진행 상태(PENDING/APPROVED/REJECTED), 신청일]을 마크다운 표로 깔끔하게 정리해 보여주세요.
+- 만약 'create_resource_request' 생성 결과인 경우:
+  * 발급된 티켓 번호(REQ-XXXX), 신청 사유, 사양, 승인 대기 상태를 영수증 카드 마크다운 표로 요약해 주세요.
 - 오류가 발생했다면 원인과 해결 방안을 명확히 안내하세요.
 ${toolInfo}`;
 

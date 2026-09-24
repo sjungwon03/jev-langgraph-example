@@ -9,7 +9,7 @@ import {
 } from '@nest-msa/contracts';
 import { Response } from 'express';
 
-interface StoredMessage {
+export interface StoredMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
@@ -29,6 +29,23 @@ export class ChatService {
   getHistory(threadId: string): ChatThreadHistoryDto {
     const messages = this.threadHistories.get(threadId) || [];
     return { threadId, messages };
+  }
+
+  getSessions() {
+    const list: { threadId: string; messageCount: number; lastMessage?: StoredMessage }[] = [];
+    for (const [threadId, msgs] of this.threadHistories.entries()) {
+      list.push({
+        threadId,
+        messageCount: msgs.length,
+        lastMessage: msgs[msgs.length - 1],
+      });
+    }
+    return list;
+  }
+
+  clearHistory(threadId: string) {
+    this.threadHistories.delete(threadId);
+    return { success: true, threadId };
   }
 
   getGraph() {
