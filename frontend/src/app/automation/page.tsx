@@ -114,7 +114,7 @@ export default function AutomationPage() {
 
   return (
     <AuthGuard allowedRoles={['INFRA_TEAM']}>
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#070b13] text-slate-900 dark:text-slate-100">
         <Header onRefresh={loadData} isRefreshing={loading} />
 
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -122,11 +122,11 @@ export default function AutomationPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-400" />
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500 dark:text-amber-400" />
                 <span>스케줄러 & 자율 복구 자동화 규칙</span>
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 ShedLock 기반 분산 주기 실행 및 임계치 도달 시 자율 액션 트리거
               </p>
             </div>
@@ -142,28 +142,28 @@ export default function AutomationPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {rules.map((rule) => (
-              <Card key={rule.id} className="border border-slate-800/80 bg-slate-900/50">
+              <Card key={rule.id} className="border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/50 shadow-sm">
                 <CardHeader className="p-5 pb-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h4 className="font-semibold text-sm text-slate-100">{rule.name}</h4>
-                      <p className="text-xs text-slate-400 mt-0.5">{rule.description}</p>
+                      <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100">{rule.name}</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{rule.description}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleToggle(rule.id)}
-                        className="text-slate-400 hover:text-emerald-400 transition-colors"
+                        className="text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors"
                         title={rule.enabled ? '비활성화' : '활성화'}
                       >
                         {rule.enabled ? (
-                          <ToggleRight className="w-6 h-6 text-emerald-400" />
+                          <ToggleRight className="w-6 h-6 text-emerald-500 dark:text-emerald-400" />
                         ) : (
-                          <ToggleLeft className="w-6 h-6 text-slate-600" />
+                          <ToggleLeft className="w-6 h-6 text-slate-400 dark:text-slate-600" />
                         )}
                       </button>
                       <button
                         onClick={() => handleDelete(rule.id)}
-                        className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                        className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                         title="삭제"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -173,16 +173,16 @@ export default function AutomationPage() {
                 </CardHeader>
 
                 <CardContent className="p-5 pt-0">
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="font-mono text-[11px] text-cyan-400 border-slate-700">
+                      <Badge variant="outline" className="font-mono text-[11px] text-cyan-600 dark:text-cyan-400 border-slate-200 dark:border-slate-700">
                         {rule.triggerType}
                       </Badge>
-                      <Badge variant="outline" className="font-mono text-[11px] text-amber-300 border-slate-700">
+                      <Badge variant="outline" className="font-mono text-[11px] text-amber-600 dark:text-amber-300 border-slate-200 dark:border-slate-700">
                         {rule.actionType}
                       </Badge>
                     </div>
-                    <span className="text-[11px] font-mono text-slate-500">
+                    <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                       트리거 {rule.triggerCount}회
                     </span>
                   </div>
@@ -196,17 +196,17 @@ export default function AutomationPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h2 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-                <History className="w-4 h-4 text-teal-400" />
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <History className="w-4 h-4 text-teal-500 dark:text-teal-400" />
                 <span>인프라 제어 감사 & AI 판단 로그</span>
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 AI 챗봇의 툴 선택 및 판단 근거(Why Selected), 사용자 명령, 자동화 엔진의 모든 작업 이력 추적
               </p>
             </div>
 
             {/* Filter Pills */}
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono">
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono">
               <Button
                 variant={auditFilter === 'all' ? 'secondary' : 'ghost'}
                 size="sm"
@@ -220,10 +220,10 @@ export default function AutomationPage() {
                 size="sm"
                 onClick={() => setAuditFilter('ai-agent')}
                 className={`h-7 text-xs gap-1 ${
-                  auditFilter === 'ai-agent' ? 'text-purple-300 border border-purple-500/30' : ''
+                  auditFilter === 'ai-agent' ? 'text-purple-600 dark:text-purple-300 border border-purple-500/30' : ''
                 }`}
               >
-                <Brain className="w-3 h-3 text-purple-400" />
+                <Brain className="w-3 h-3 text-purple-500 dark:text-purple-400" />
                 <span>AI 판단 로그 ({logs.filter((l) => l.actor === 'ai-agent').length})</span>
               </Button>
               <Button
@@ -245,19 +245,19 @@ export default function AutomationPage() {
             </div>
           </div>
 
-          <Card className="border border-slate-800/80 bg-slate-900/50 overflow-hidden">
+          <Card className="border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/50 shadow-sm overflow-hidden">
             <Table className="text-xs">
-              <TableHeader className="bg-slate-900/60 uppercase font-mono text-[11px]">
-                <TableRow className="border-slate-800">
-                  <TableHead className="py-3 px-4 text-slate-400">시간</TableHead>
-                  <TableHead className="py-3 px-4 text-slate-400">주체 (Actor)</TableHead>
-                  <TableHead className="py-3 px-4 text-slate-400">수행 작업 (Action / Tool)</TableHead>
-                  <TableHead className="py-3 px-4 text-slate-400">판단 근거 / 상세 정보</TableHead>
-                  <TableHead className="py-3 px-4 text-slate-400">상태</TableHead>
-                  <TableHead className="py-3 px-4 text-right text-slate-400">상세 보기</TableHead>
+              <TableHeader className="bg-slate-50 dark:bg-slate-900/60 uppercase font-mono text-[11px]">
+                <TableRow className="border-slate-200 dark:border-slate-800">
+                  <TableHead className="py-3 px-4 text-slate-500 dark:text-slate-400">시간</TableHead>
+                  <TableHead className="py-3 px-4 text-slate-500 dark:text-slate-400">주체 (Actor)</TableHead>
+                  <TableHead className="py-3 px-4 text-slate-500 dark:text-slate-400">수행 작업 (Action / Tool)</TableHead>
+                  <TableHead className="py-3 px-4 text-slate-500 dark:text-slate-400">판단 근거 / 상세 정보</TableHead>
+                  <TableHead className="py-3 px-4 text-slate-500 dark:text-slate-400">상태</TableHead>
+                  <TableHead className="py-3 px-4 text-right text-slate-500 dark:text-slate-400">상세 보기</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-slate-800/50">
+              <TableBody className="divide-y divide-slate-200 dark:divide-slate-800/50">
                 {logs
                   .filter((log) => auditFilter === 'all' || log.actor === auditFilter)
                   .map((log) => {
@@ -270,36 +270,36 @@ export default function AutomationPage() {
                       <React.Fragment key={log.id}>
                         <TableRow
                           onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
-                          className={`hover:bg-slate-800/40 cursor-pointer border-slate-800/50 ${
-                            isExpanded ? 'bg-slate-800/60' : ''
+                          className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer border-slate-200 dark:border-slate-800/50 ${
+                            isExpanded ? 'bg-slate-100 dark:bg-slate-800/60' : ''
                           }`}
                         >
-                          <TableCell className="py-3.5 px-4 font-mono text-slate-400 text-[11px] whitespace-nowrap">
+                          <TableCell className="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400 text-[11px] whitespace-nowrap">
                             {new Date(log.timestamp).toLocaleTimeString()}
                           </TableCell>
                           <TableCell className="py-3.5 px-4 whitespace-nowrap">
                             <Badge
                               variant="outline"
-                              className="font-mono text-[10px] bg-slate-800 text-slate-300 border-slate-700"
+                              className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                             >
                               {log.actor.toUpperCase()}
                             </Badge>
                           </TableCell>
-                          <TableCell className="py-3.5 px-4 font-mono font-medium text-slate-200 whitespace-nowrap">
+                          <TableCell className="py-3.5 px-4 font-mono font-medium text-slate-900 dark:text-slate-200 whitespace-nowrap">
                             {log.details?.tool || log.action}
                           </TableCell>
                           <TableCell className="py-3.5 px-4">
                             {whyText ? (
                               <div className="space-y-0.5">
-                                <div className="text-[11px] font-medium text-slate-200 line-clamp-1">
+                                <div className="text-[11px] font-medium text-slate-900 dark:text-slate-200 line-clamp-1">
                                   "{log.details?.prompt}"
                                 </div>
-                                <div className="text-[11px] text-slate-400 line-clamp-1 flex items-center gap-1 font-mono">
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 flex items-center gap-1 font-mono">
                                   <span>{whyText}</span>
                                 </div>
                               </div>
                             ) : (
-                              <span className="font-mono text-[11px] text-slate-400 truncate block max-w-md">
+                              <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 truncate block max-w-md">
                                 {log.details ? JSON.stringify(log.details) : '-'}
                               </span>
                             )}
@@ -314,9 +314,9 @@ export default function AutomationPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3.5 px-4 text-right">
-                            <button className="text-slate-400 hover:text-slate-200">
+                            <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                               {isExpanded ? (
-                                <ChevronDown className="w-4 h-4 text-slate-300" />
+                                <ChevronDown className="w-4 h-4 text-slate-700 dark:text-slate-300" />
                               ) : (
                                 <ChevronRight className="w-4 h-4" />
                               )}
@@ -326,49 +326,49 @@ export default function AutomationPage() {
 
                         {/* Collapsible Deep-Dive Row */}
                         {isExpanded && (
-                          <TableRow className="bg-slate-950/70 border-slate-800">
-                            <TableCell colSpan={6} className="p-4 space-y-3 border-t border-slate-800/80">
+                          <TableRow className="bg-slate-50/80 dark:bg-slate-950/70 border-slate-200 dark:border-slate-800">
+                            <TableCell colSpan={6} className="p-4 space-y-3 border-t border-slate-200 dark:border-slate-800/80">
                               {isAi ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5">
-                                    <div className="font-semibold text-slate-200 flex items-center gap-1.5">
-                                      <Brain className="w-3.5 h-3.5 text-slate-400" />
+                                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-1.5 shadow-sm">
+                                    <div className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1.5">
+                                      <Brain className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                                       <span>도구 선택 사유 및 분석 결과</span>
                                     </div>
-                                    <p className="text-[11px] text-slate-300 leading-relaxed bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+                                    <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-950/60 p-2 rounded-lg border border-slate-200 dark:border-slate-800">
                                       {log.details?.why || '-'}
                                     </p>
-                                    <div className="text-[10px] font-mono text-slate-400 flex items-center gap-3 pt-0.5">
-                                      <span>의도: <strong className="text-slate-200">{log.details?.intent || '-'}</strong></span>
+                                    <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-3 pt-0.5">
+                                      <span>의도: <strong className="text-slate-800 dark:text-slate-200">{log.details?.intent || '-'}</strong></span>
                                       {log.details?.latencyMs && (
-                                        <span>추론 지연: <strong className="text-slate-300">{log.details.latencyMs}ms</strong></span>
+                                        <span>추론 지연: <strong className="text-slate-700 dark:text-slate-300">{log.details.latencyMs}ms</strong></span>
                                       )}
                                     </div>
                                   </div>
 
-                                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5">
-                                    <div className="font-semibold text-slate-300 flex items-center gap-1.5">
-                                      <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
+                                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-1.5 shadow-sm">
+                                    <div className="font-semibold text-slate-900 dark:text-slate-300 flex items-center gap-1.5">
+                                      <ShieldCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                                       <span>보안 평가 및 실행 영수증</span>
                                     </div>
-                                    <div className="text-[11px] font-mono text-slate-300 bg-slate-800/50 p-2 rounded-lg">
+                                    <div className="text-[11px] font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/50 p-2 rounded-lg">
                                       {log.details?.safetyEvaluation || 'SAFE'}
                                     </div>
                                     {log.details?.args && (
-                                      <div className="text-[10px] font-mono text-slate-400 truncate">
+                                      <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate">
                                         호출 인자: {JSON.stringify(log.details.args)}
                                       </div>
                                     )}
                                     {log.details?.upid && (
-                                      <div className="text-[10px] font-mono text-cyan-400 truncate">
+                                      <div className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 truncate">
                                         UPID: {log.details.upid}
                                       </div>
                                     )}
                                   </div>
                                 </div>
                               ) : (
-                                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 font-mono text-xs text-slate-300">
-                                  <pre className="text-[11px] text-slate-300 overflow-x-auto">
+                                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-mono text-xs text-slate-800 dark:text-slate-300">
+                                  <pre className="text-[11px] text-slate-800 dark:text-slate-300 overflow-x-auto">
                                     {JSON.stringify(log.details || {}, null, 2)}
                                   </pre>
                                 </div>
@@ -387,17 +387,17 @@ export default function AutomationPage() {
 
       {/* Add Rule Dialog */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-md border-slate-800 bg-slate-900/95">
-          <DialogHeader>
-            <DialogTitle className="text-base text-slate-100 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-400" />
+        <DialogContent className="max-w-md">
+          <DialogHeader className="pb-2 border-b border-slate-200 dark:border-slate-800">
+            <DialogTitle className="text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-500 dark:text-amber-400" />
               <span>새 자동화 규칙 생성</span>
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleCreateRule} className="space-y-4 pt-1">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 규칙 이름
               </label>
               <Input
@@ -410,7 +410,7 @@ export default function AutomationPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 메모리 임계치 (%): {newRuleThreshold}%
               </label>
               <input
@@ -423,7 +423,7 @@ export default function AutomationPage() {
               />
             </div>
 
-            <DialogFooter className="pt-2 border-t border-slate-800">
+            <DialogFooter className="pt-2 border-t border-slate-200 dark:border-slate-800">
               <Button
                 type="button"
                 variant="secondary"

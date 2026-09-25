@@ -22,7 +22,7 @@ export function LangGraphVisualizerModal({
 }: LangGraphVisualizerModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-6xl h-[88vh] flex flex-col p-0 gap-0 border-slate-800 bg-slate-950/95 overflow-hidden">
+      <DialogContent className="max-w-6xl h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
         <LangGraphVisualizerContent
           executionState={executionState}
           activeNodeId={activeNodeId}

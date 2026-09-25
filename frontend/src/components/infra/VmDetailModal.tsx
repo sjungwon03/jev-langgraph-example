@@ -116,35 +116,35 @@ export function VmDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl border-slate-800 bg-slate-900/95 max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="pb-3 border-b border-slate-800">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <div
               className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                 isRunning
-                  ? 'bg-slate-800 text-slate-200 border border-slate-700'
-                  : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700'
               }`}
             >
               <Server className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <DialogTitle className="text-lg text-slate-100">{vm.name}</DialogTitle>
-                <Badge variant="outline" className="font-mono text-slate-200 border-slate-700">
+                <DialogTitle className="text-lg text-slate-900 dark:text-slate-100">{vm.name}</DialogTitle>
+                <Badge variant="outline" className="font-mono text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700">
                   ID: {vm.vmid}
                 </Badge>
-                <Badge variant="secondary" className="font-mono uppercase text-slate-300">
+                <Badge variant="secondary" className="font-mono uppercase text-slate-700 dark:text-slate-300">
                   {vm.type}
                 </Badge>
               </div>
-              <DialogDescription className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                <span>호스트 노드: <strong className="text-slate-300 font-mono">{vm.node}</strong></span>
+              <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2">
+                <span>호스트 노드: <strong className="text-slate-700 dark:text-slate-300 font-mono">{vm.node}</strong></span>
                 <span>•</span>
                 <span className="flex items-center gap-1 font-mono">
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
-                      isRunning ? 'bg-emerald-400' : 'bg-slate-500'
+                      isRunning ? 'bg-emerald-400' : 'bg-slate-400 dark:bg-slate-500'
                     }`}
                   />
                   {vm.status.toUpperCase()}
@@ -193,94 +193,94 @@ export function VmDetailModal({
         {/* Real-time Hardware Meters */}
         <div className="grid grid-cols-3 gap-3">
           {/* CPU Meter */}
-          <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-2">
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 flex items-center gap-1.5 font-medium">
-                <Cpu className="w-3.5 h-3.5 text-cyan-400" /> vCPU
+              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-medium">
+                <Cpu className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" /> vCPU
               </span>
-              <span className="font-mono text-cyan-400 font-bold">{cpuPercent}%</span>
+              <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">{cpuPercent}%</span>
             </div>
-            <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700/50">
+            <div className="w-full bg-slate-200 dark:bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-300 dark:border-slate-700/50">
               <div
                 className="bg-gradient-to-r from-cyan-500 to-teal-400 h-full rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(cpuPercent, 100)}%` }}
               />
             </div>
-            <div className="text-[11px] text-slate-400 font-mono">
-              할당 코어: <strong className="text-slate-200">{vm.cpus || 2} vCPU</strong>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+              할당 코어: <strong className="text-slate-800 dark:text-slate-200">{vm.cpus || 2} vCPU</strong>
             </div>
           </div>
 
           {/* RAM Meter */}
-          <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-2">
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 flex items-center gap-1.5 font-medium">
-                <MemoryStick className="w-3.5 h-3.5 text-slate-400" /> RAM
+              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-medium">
+                <MemoryStick className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" /> RAM
               </span>
-              <span className="font-mono text-slate-200 font-bold">{memUsagePercent}%</span>
+              <span className="font-mono text-slate-900 dark:text-slate-200 font-bold">{memUsagePercent}%</span>
             </div>
-            <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700/50">
+            <div className="w-full bg-slate-200 dark:bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-300 dark:border-slate-700/50">
               <div
-                className="bg-slate-300 h-full rounded-full transition-all duration-300"
+                className="bg-slate-500 dark:bg-slate-300 h-full rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(memUsagePercent, 100)}%` }}
               />
             </div>
-            <div className="text-[11px] text-slate-400 font-mono">
-              사용량: <strong className="text-slate-200">{memUsedGB}</strong> / {memTotalGB} GB
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+              사용량: <strong className="text-slate-800 dark:text-slate-200">{memUsedGB}</strong> / {memTotalGB} GB
             </div>
           </div>
 
           {/* Disk Meter */}
-          <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-2">
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 flex items-center gap-1.5 font-medium">
-                <HardDrive className="w-3.5 h-3.5 text-slate-400" /> 가상 디스크
+              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-medium">
+                <HardDrive className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" /> 가상 디스크
               </span>
-              <span className="font-mono text-slate-200 font-bold">{diskUsagePercent}%</span>
+              <span className="font-mono text-slate-900 dark:text-slate-200 font-bold">{diskUsagePercent}%</span>
             </div>
-            <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700/50">
+            <div className="w-full bg-slate-200 dark:bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-300 dark:border-slate-700/50">
               <div
-                className="bg-slate-300 h-full rounded-full transition-all duration-300"
+                className="bg-slate-500 dark:bg-slate-300 h-full rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(diskUsagePercent, 100)}%` }}
               />
             </div>
-            <div className="text-[11px] text-slate-400 font-mono">
-              용량: <strong className="text-slate-200">{diskUsedGB}</strong> / {diskTotalGB} GB
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+              용량: <strong className="text-slate-800 dark:text-slate-200">{diskUsedGB}</strong> / {diskTotalGB} GB
             </div>
           </div>
         </div>
 
         {/* Virtual Hardware & Configuration Table */}
         <div className="space-y-2">
-          <h4 className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+          <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
             <Layers className="w-3.5 h-3.5 text-slate-400" /> 가상 하드웨어 및 구성 정보
           </h4>
-          <div className="grid grid-cols-2 gap-2 text-xs bg-slate-800/40 p-3 rounded-xl border border-slate-700/50">
-            <div className="flex justify-between py-1 border-b border-slate-700/40">
-              <span className="text-slate-400">가상화 엔진:</span>
-              <span className="font-mono text-slate-200">
+          <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50">
+            <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700/40">
+              <span className="text-slate-500 dark:text-slate-400">가상화 엔진:</span>
+              <span className="font-mono text-slate-800 dark:text-slate-200">
                 {vm.type === 'qemu' ? 'KVM / QEMU 8.2' : 'LXC Container Engine'}
               </span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-700/40">
-              <span className="text-slate-400">가동 시간 (Uptime):</span>
-              <span className="font-mono text-emerald-400">{formatUptime(vm.uptime)}</span>
+            <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700/40">
+              <span className="text-slate-500 dark:text-slate-400">가동 시간 (Uptime):</span>
+              <span className="font-mono text-emerald-600 dark:text-emerald-400">{formatUptime(vm.uptime)}</span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-700/40">
-              <span className="text-slate-400">스토리지 컨트롤러:</span>
-              <span className="font-mono text-slate-200">virtio-scsi-single</span>
+            <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700/40">
+              <span className="text-slate-500 dark:text-slate-400">스토리지 컨트롤러:</span>
+              <span className="font-mono text-slate-800 dark:text-slate-200">virtio-scsi-single</span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-700/40">
-              <span className="text-slate-400">루트 드라이브:</span>
-              <span className="font-mono text-amber-300">scsi0 (local-lvm, {diskTotalGB}GB)</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-slate-400">가상 브릿지 인터페이스:</span>
-              <span className="font-mono text-cyan-300">vmbr0 (VirtIO)</span>
+            <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700/40">
+              <span className="text-slate-500 dark:text-slate-400">루트 드라이브:</span>
+              <span className="font-mono text-amber-600 dark:text-amber-300">scsi0 (local-lvm, {diskTotalGB}GB)</span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-slate-400">가상 MAC 주소:</span>
-              <span className="font-mono text-slate-300">
+              <span className="text-slate-500 dark:text-slate-400">가상 브릿지 인터페이스:</span>
+              <span className="font-mono text-cyan-600 dark:text-cyan-300">vmbr0 (VirtIO)</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-slate-500 dark:text-slate-400">가상 MAC 주소:</span>
+              <span className="font-mono text-slate-700 dark:text-slate-300">
                 BC:24:11:{Math.floor(vm.vmid / 10)}:{(vm.vmid % 99).toString(16).padStart(2, '0')}:A1
               </span>
             </div>
@@ -288,7 +288,7 @@ export function VmDetailModal({
         </div>
 
         {/* Quick Operations Toolbar */}
-        <DialogFooter className="flex flex-row items-center justify-between pt-3 border-t border-slate-800">
+        <DialogFooter className="flex flex-row items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             {onOpenSnapshot && (
               <Button

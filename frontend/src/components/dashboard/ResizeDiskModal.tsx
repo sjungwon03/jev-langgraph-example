@@ -51,17 +51,17 @@ export function ResizeDiskModal({ vm, isOpen, onClose, onSuccess }: ResizeDiskMo
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md border-slate-800 bg-slate-900/95">
-        <DialogHeader className="pb-2 border-b border-slate-800">
+      <DialogContent className="max-w-md">
+        <DialogHeader className="pb-2 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 border border-slate-700/60 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60 flex items-center justify-center">
               <HardDrive className="w-4 h-4" />
             </div>
             <div>
-              <DialogTitle className="text-base text-slate-100">
+              <DialogTitle className="text-base text-slate-900 dark:text-slate-100">
                 디스크 용량 증설 (Hot-Resize)
               </DialogTitle>
-              <DialogDescription className="text-xs text-slate-400">
+              <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
                 {vm.name} (VMID: {vm.vmid}) on {vm.node}
               </DialogDescription>
             </div>
@@ -78,11 +78,11 @@ export function ResizeDiskModal({ vm, isOpen, onClose, onSuccess }: ResizeDiskMo
         <form onSubmit={handleResize} className="space-y-4 text-xs pt-1">
           {/* Target Disk */}
           <div>
-            <label className="block text-slate-300 font-medium mb-1">대상 가상 디스크 드라이브</label>
+            <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">대상 가상 디스크 드라이브</label>
             <select
               value={disk}
               onChange={(e) => setDisk(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-slate-200 font-mono focus:outline-none focus:border-amber-500"
+              className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-amber-500"
             >
               <option value="scsi0">scsi0 (기본 OS 루트 디스크)</option>
               <option value="virtio0">virtio0 (VirtIO 고속 스토리지)</option>
@@ -91,20 +91,20 @@ export function ResizeDiskModal({ vm, isOpen, onClose, onSuccess }: ResizeDiskMo
           </div>
 
           {/* Current vs Next */}
-          <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/60 text-center font-mono">
+          <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 text-center font-mono">
             <div>
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">현재 용량</span>
-              <span className="text-lg font-bold text-slate-200">{currentDiskGB} GB</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider block">현재 용량</span>
+              <span className="text-lg font-bold text-slate-900 dark:text-slate-200">{currentDiskGB} GB</span>
             </div>
             <div>
-              <span className="text-[10px] text-emerald-400 uppercase tracking-wider block">증설 후 용량</span>
-              <span className="text-lg font-bold text-emerald-400">{nextDiskGB} GB</span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">증설 후 용량</span>
+              <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{nextDiskGB} GB</span>
             </div>
           </div>
 
           {/* Size Increment Quick Options */}
           <div>
-            <label className="block text-slate-300 font-medium mb-1.5">증설할 용량 선택 (+GB)</label>
+            <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1.5">증설할 용량 선택 (+GB)</label>
             <div className="grid grid-cols-4 gap-2 mb-2">
               {['5', '10', '20', '50'].map((val) => (
                 <Button
@@ -120,7 +120,7 @@ export function ResizeDiskModal({ vm, isOpen, onClose, onSuccess }: ResizeDiskMo
               ))}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-slate-400">직접 입력:</span>
+              <span className="text-slate-600 dark:text-slate-400">직접 입력:</span>
               <Input
                 type="number"
                 min={1}
@@ -129,15 +129,15 @@ export function ResizeDiskModal({ vm, isOpen, onClose, onSuccess }: ResizeDiskMo
                 onChange={(e) => setSizeIncrement(e.target.value)}
                 className="w-24 text-center font-mono text-xs"
               />
-              <span className="text-slate-400 font-mono">GB 추가</span>
+              <span className="text-slate-600 dark:text-slate-400 font-mono">GB 추가</span>
             </div>
           </div>
 
-          <div className="text-[11px] text-slate-400 bg-slate-800/30 p-2.5 rounded-lg border border-slate-800">
-            ℹ️ Proxmox QEMU 디스크 확장은 무중단(Online)으로 진행되며, 확장이 완료된 후 게스트 OS에서 <code className="text-amber-300">growpart</code> 및 <code className="text-amber-300">resize2fs</code> 명령을 통해 파티션을 확장할 수 있습니다.
+          <div className="text-[11px] text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/30 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+            ℹ️ Proxmox QEMU 디스크 확장은 무중단(Online)으로 진행되며, 확장이 완료된 후 게스트 OS에서 <code className="text-amber-600 dark:text-amber-300">growpart</code> 및 <code className="text-amber-600 dark:text-amber-300">resize2fs</code> 명령을 통해 파티션을 확장할 수 있습니다.
           </div>
 
-          <DialogFooter className="pt-3 border-t border-slate-800">
+          <DialogFooter className="pt-3 border-t border-slate-200 dark:border-slate-800">
             <Button
               type="button"
               variant="secondary"

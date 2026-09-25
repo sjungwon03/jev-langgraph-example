@@ -71,23 +71,23 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 border-slate-800 bg-slate-900/95 overflow-hidden">
+      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* Header */}
-        <DialogHeader className="p-4 border-b border-slate-800 flex flex-row items-center justify-between bg-slate-950/60 space-y-0">
+        <DialogHeader className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-row items-center justify-between bg-slate-50 dark:bg-slate-950/60 space-y-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-slate-800 text-slate-200 flex items-center justify-center border border-slate-700">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center border border-slate-200 dark:border-slate-700">
               <Brain className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <DialogTitle className="text-base text-slate-100">
+                <DialogTitle className="text-base text-slate-900 dark:text-slate-100">
                   도구 호출 및 실행 감사 로그 (Execution Audit Logs)
                 </DialogTitle>
-                <Badge variant="outline" className="text-[10px] font-mono bg-slate-800 text-slate-300 border-slate-700">
+                <Badge variant="outline" className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
                   AUDIT
                 </Badge>
               </div>
-              <DialogDescription className="text-xs text-slate-400">
+              <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
                 인프라 오케스트레이션 도구 호출 및 의도 분석 판단 이력
               </DialogDescription>
             </div>
@@ -98,7 +98,7 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
               size="icon"
               onClick={loadLogs}
               disabled={loading}
-              className="h-8 w-8 text-slate-400 hover:text-white"
+              className="h-8 w-8 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               title="새로고침"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -107,7 +107,7 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
         </DialogHeader>
 
         {/* Filter bar */}
-        <div className="p-3 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between gap-3 text-xs">
+        <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/80 flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2 flex-1 max-w-md">
             <Search className="w-3.5 h-3.5 text-slate-400" />
             <Input
@@ -115,7 +115,7 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
               placeholder="사용자 질의 또는 판단 이유 검색..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 text-xs bg-slate-800/80 border-slate-700/60"
+              className="h-8 text-xs bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/60"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -123,7 +123,7 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
             <select
               value={selectedTool}
               onChange={(e) => setSelectedTool(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1 text-slate-200 font-mono text-xs focus:outline-none"
+              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-2.5 py-1 text-slate-900 dark:text-slate-200 font-mono text-xs focus:outline-none"
             >
               <option value="all">모든 도구 ({logs.length})</option>
               {tools.map((t) => (
@@ -138,7 +138,7 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
         {/* Content Body: Left List, Right Detail */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left: Log Items List */}
-          <div className="w-1/2 border-r border-slate-800 overflow-y-auto divide-y divide-slate-800/60">
+          <div className="w-1/2 border-r border-slate-200 dark:border-slate-800 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800/60">
             {filteredLogs.length === 0 ? (
               <div className="p-8 text-center text-slate-500 text-xs">
                 검색된 AI 판단 로그가 없습니다.
@@ -156,31 +156,31 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
                     onClick={() => setSelectedLog(log)}
                     className={`p-3.5 cursor-pointer transition-colors space-y-1.5 ${
                       isSelected
-                        ? 'bg-slate-800/80 border-l-2 border-slate-400'
-                        : 'hover:bg-slate-800/40'
+                        ? 'bg-slate-100 dark:bg-slate-800/80 border-l-2 border-slate-700 dark:border-slate-400'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
                     }`}
                   >
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5 font-mono">
-                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono bg-slate-800 text-slate-300 border-slate-700">
+                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700">
                           {toolName}
                         </Badge>
                         {log.details?.latencyMs && (
-                          <span className="text-[10px] text-slate-500">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
                             {log.details.latencyMs}ms
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                         {new Date(log.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
 
-                    <div className="text-xs font-medium text-slate-200 line-clamp-1">
+                    <div className="text-xs font-medium text-slate-900 dark:text-slate-200 line-clamp-1">
                       "{promptText}"
                     </div>
 
-                    <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                       {whyText}
                     </p>
                   </div>
@@ -190,55 +190,55 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
           </div>
 
           {/* Right: Selected Log Deep Dive Inspector */}
-          <div className="w-1/2 p-5 overflow-y-auto space-y-4 bg-slate-950/30">
+          <div className="w-1/2 p-5 overflow-y-auto space-y-4 bg-slate-50/40 dark:bg-slate-950/30">
             {selectedLog ? (
               <div className="space-y-4">
                 {/* Header */}
-                <div className="pb-3 border-b border-slate-800 flex items-start justify-between">
+                <div className="pb-3 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between">
                   <div>
                     <span className="text-[10px] text-slate-500 font-mono">Log ID: {selectedLog.id}</span>
-                    <h4 className="text-sm font-semibold text-slate-100 mt-0.5">
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mt-0.5">
                       "{selectedLog.details?.prompt || selectedLog.action}"
                     </h4>
                   </div>
-                  <Badge variant="outline" className="text-[10px] font-mono bg-slate-800 text-slate-300 border-slate-700">
+                  <Badge variant="outline" className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
                     {selectedLog.status}
                   </Badge>
                 </div>
 
                 {/* Section 1: Tool Selection & Why */}
-                <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
-                    <Brain className="w-4 h-4 text-slate-400" />
+                <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-900 dark:text-slate-200">
+                    <Brain className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     <span>의도 분석 및 도구 선택 사유</span>
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
                     {selectedLog.details?.why || '도구 선택 사유가 기록되지 않았습니다.'}
                   </p>
-                  <div className="flex items-center gap-4 text-[11px] font-mono text-slate-400 pt-1">
-                    <span>의도: <strong className="text-slate-200">{selectedLog.details?.intent || '-'}</strong></span>
-                    <span>도구: <strong className="text-slate-200">{selectedLog.details?.tool || selectedLog.action}</strong></span>
+                  <div className="flex items-center gap-4 text-[11px] font-mono text-slate-500 dark:text-slate-400 pt-1">
+                    <span>의도: <strong className="text-slate-900 dark:text-slate-200">{selectedLog.details?.intent || '-'}</strong></span>
+                    <span>도구: <strong className="text-slate-900 dark:text-slate-200">{selectedLog.details?.tool || selectedLog.action}</strong></span>
                     {selectedLog.details?.latencyMs && (
-                      <span>추론: <strong className="text-slate-300">{selectedLog.details.latencyMs}ms</strong></span>
+                      <span>추론: <strong className="text-slate-700 dark:text-slate-300">{selectedLog.details.latencyMs}ms</strong></span>
                     )}
                   </div>
                 </div>
 
                 {/* Section 2: Safety Evaluation */}
-                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2 text-xs">
-                  <div className="flex items-center gap-1.5 font-semibold text-slate-300">
-                    <ShieldCheck className="w-4 h-4 text-teal-400" />
+                <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs shadow-sm">
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-300">
+                    <ShieldCheck className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                     <span>보안 및 안전성 평가 (Safety Check)</span>
                   </div>
-                  <p className="text-slate-300 bg-slate-800/40 p-2 rounded-lg border border-slate-700/60 font-mono text-[11px]">
+                  <p className="text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/40 p-2 rounded-lg border border-slate-200 dark:border-slate-700/60 font-mono text-[11px]">
                     {selectedLog.details?.safetyEvaluation || 'SAFE - 안전한 작업'}
                   </p>
                 </div>
 
                 {/* Section 3: Tool Arguments & Execution Result */}
                 <div className="space-y-2 text-xs">
-                  <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-                    <Wrench className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="font-semibold text-slate-900 dark:text-slate-300 flex items-center gap-1.5">
+                    <Wrench className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                     도구 호출 인자 (Arguments)
                   </span>
                   <pre className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-[11px] font-mono text-emerald-300 overflow-x-auto">
@@ -248,8 +248,8 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
 
                 {selectedLog.details?.upid && (
                   <div className="space-y-1 text-xs">
-                    <span className="text-slate-400 font-mono">Proxmox UPID 영수증:</span>
-                    <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 font-mono text-[10px] text-cyan-400 break-all">
+                    <span className="text-slate-500 dark:text-slate-400 font-mono">Proxmox UPID 영수증:</span>
+                    <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-mono text-[10px] text-cyan-700 dark:text-cyan-400 break-all">
                       {selectedLog.details.upid}
                     </div>
                   </div>
@@ -264,7 +264,7 @@ export function DecisionLogsModal({ isOpen, onClose }: DecisionLogsModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between text-xs text-slate-400">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
           <span className="font-mono">총 {logs.length}건의 판단 로그가 기록되어 있습니다.</span>
           <Button
             variant="secondary"

@@ -68,25 +68,25 @@ export default function InfraExplorerPage() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#070b13] text-slate-900 dark:text-slate-100">
       <Header onRefresh={loadData} isRefreshing={loading} />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Navigation Tabs Header */}
-          <div className="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-slate-800">
+          <div className="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
             <div>
-              <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <Server className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Server className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 <span>클러스터 인프라 아키텍처 & 자원 상세</span>
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 데이터센터 토폴로지, 공유 스토리지 풀, 가상 브릿지 네트워크 및 백그라운드 태스크 제어
               </p>
             </div>
 
             {/* Tab Selector */}
-            <TabsList className="bg-slate-900 border-slate-800">
+            <TabsList>
               <TabsTrigger value="topology" className="flex items-center gap-2 text-xs">
                 <Layers className="w-3.5 h-3.5" />
                 <span>토폴로지 맵</span>

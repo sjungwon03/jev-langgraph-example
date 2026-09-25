@@ -22,7 +22,7 @@ export function TaskQueueTable({ tasks }: TaskQueueTableProps) {
       case 'vmdel':
         return 'bg-rose-500/20 text-rose-300 border-rose-500/30';
       default:
-        return 'bg-slate-800 text-slate-300 border-slate-700';
+        return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
     }
   };
 
@@ -30,20 +30,20 @@ export function TaskQueueTable({ tasks }: TaskQueueTableProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-slate-400" />
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             <span>클러스터 비동기 작업 큐 & UPID 이력</span>
           </h3>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Proxmox VE 백엔드 작업 워커가 처리한 비동기 태스크 실행 영수증
           </p>
         </div>
-        <span className="text-xs font-mono text-slate-400">최근 {tasks.length}개 작업</span>
+        <span className="text-xs font-mono text-slate-500 dark:text-slate-400">최근 {tasks.length}개 작업</span>
       </div>
 
-      <div className="rounded-xl overflow-hidden border border-slate-800/80 bg-slate-900/50">
+      <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/50 shadow-sm">
         <table className="w-full text-left text-xs">
-          <thead className="bg-slate-900/60 text-slate-400 border-b border-slate-800 uppercase font-mono text-[11px]">
+          <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase font-mono text-[11px]">
             <tr>
               <th className="py-3 px-4">작업 유형 (Task)</th>
               <th className="py-3 px-4">대상 ID</th>
@@ -54,9 +54,9 @@ export function TaskQueueTable({ tasks }: TaskQueueTableProps) {
               <th className="py-3 px-4">고유 UPID 영수증</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/50 text-slate-300">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-800/50 text-slate-700 dark:text-slate-300">
             {tasks.map((task) => (
-              <tr key={task.upid} className="hover:bg-slate-800/30 transition-colors">
+              <tr key={task.upid} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                 <td className="py-3.5 px-4">
                   <span
                     className={`px-2 py-0.5 rounded text-[11px] font-mono border ${getActionBadgeColor(
@@ -66,24 +66,24 @@ export function TaskQueueTable({ tasks }: TaskQueueTableProps) {
                     {task.type.toUpperCase()}
                   </span>
                 </td>
-                <td className="py-3.5 px-4 font-mono font-medium text-slate-200">
+                <td className="py-3.5 px-4 font-mono font-medium text-slate-900 dark:text-slate-200">
                   {task.id || '-'}
                 </td>
-                <td className="py-3.5 px-4 font-mono text-slate-300">{task.node}</td>
-                <td className="py-3.5 px-4 font-mono text-slate-300 flex items-center gap-1.5">
-                  <User className="w-3 h-3 text-slate-500" />
+                <td className="py-3.5 px-4 font-mono text-slate-700 dark:text-slate-300">{task.node}</td>
+                <td className="py-3.5 px-4 font-mono text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <User className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                   <span>{task.user}</span>
                 </td>
                 <td className="py-3.5 px-4">
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-emerald-950/30 text-emerald-300 border border-emerald-800/40">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-emerald-500/10 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 dark:border-emerald-800/40">
                     <CheckCircle2 className="w-3 h-3" />
                     {task.status}
                   </span>
                 </td>
-                <td className="py-3.5 px-4 font-mono text-[11px] text-slate-400">
+                <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500 dark:text-slate-400">
                   {task.starttime ? new Date(task.starttime * 1000).toLocaleTimeString() : '-'}
                 </td>
-                <td className="py-3.5 px-4 font-mono text-[10px] text-slate-500 truncate max-w-xs" title={task.upid}>
+                <td className="py-3.5 px-4 font-mono text-[10px] text-slate-400 dark:text-slate-500 truncate max-w-xs" title={task.upid}>
                   {task.upid}
                 </td>
               </tr>

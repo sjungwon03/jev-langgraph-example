@@ -58,15 +58,15 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, nodes }: CreateVmMod
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg border-slate-800 bg-slate-900/95">
-        <DialogHeader className="pb-2 border-b border-slate-800">
+      <DialogContent className="max-w-lg">
+        <DialogHeader className="pb-2 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 border border-slate-700/60 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60 flex items-center justify-center">
               <Layers className="w-4 h-4" />
             </div>
             <div>
-              <DialogTitle className="text-base text-slate-100">새 가상 인스턴스 생성</DialogTitle>
-              <DialogDescription className="text-xs text-slate-400">
+              <DialogTitle className="text-base text-slate-900 dark:text-slate-100">새 가상 인스턴스 생성</DialogTitle>
+              <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
                 Proxmox VE QEMU VM 또는 LXC 컨테이너 배포
               </DialogDescription>
             </div>
@@ -77,11 +77,11 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, nodes }: CreateVmMod
           {/* Node & Type */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-300 font-medium mb-1">대상 노드</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">대상 노드</label>
               <select
                 value={node}
                 onChange={(e) => setNode(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
               >
                 {nodes.map((n) => (
                   <option key={n.node} value={n.node}>
@@ -91,7 +91,7 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, nodes }: CreateVmMod
               </select>
             </div>
             <div>
-              <label className="block text-slate-300 font-medium mb-1">인스턴스 유형</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">인스턴스 유형</label>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -118,7 +118,7 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, nodes }: CreateVmMod
           {/* VMID & Name */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-slate-300 font-medium mb-1">VMID</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">VMID</label>
               <Input
                 type="number"
                 required
@@ -128,7 +128,7 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, nodes }: CreateVmMod
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-slate-300 font-medium mb-1">인스턴스 이름</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">인스턴스 이름</label>
               <Input
                 type="text"
                 required
@@ -142,13 +142,13 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, nodes }: CreateVmMod
           {/* CPU, Memory, Disk */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-slate-300 font-medium mb-1 flex items-center gap-1">
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 flex items-center gap-1">
                 <Cpu className="w-3 h-3 text-slate-400" /> vCPU 코어
               </label>
               <select
                 value={cpus}
                 onChange={(e) => setCpus(Number(e.target.value))}
-                className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
               >
                 <option value={1}>1 Core</option>
                 <option value={2}>2 Cores</option>
@@ -157,13 +157,13 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, nodes }: CreateVmMod
               </select>
             </div>
             <div>
-              <label className="block text-slate-300 font-medium mb-1 flex items-center gap-1">
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 flex items-center gap-1">
                 <MemoryStick className="w-3 h-3 text-slate-400" /> RAM (MB)
               </label>
               <select
                 value={memory}
                 onChange={(e) => setMemory(Number(e.target.value))}
-                className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
               >
                 <option value={1024}>1 GB (1024)</option>
                 <option value={2048}>2 GB (2048)</option>
@@ -173,7 +173,7 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, nodes }: CreateVmMod
               </select>
             </div>
             <div>
-              <label className="block text-slate-300 font-medium mb-1 flex items-center gap-1">
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 flex items-center gap-1">
                 <HardDrive className="w-3 h-3 text-slate-400" /> 디스크 (GB)
               </label>
               <Input
@@ -189,11 +189,11 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, nodes }: CreateVmMod
 
           {/* OS Template */}
           <div>
-            <label className="block text-slate-300 font-medium mb-1">운영체제 / 템플릿</label>
+            <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">운영체제 / 템플릿</label>
             <select
               value={osTemplate}
               onChange={(e) => setOsTemplate(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
             >
               <option value="ubuntu-24.04-standard">Ubuntu 24.04 LTS (Noble Numbat)</option>
               <option value="debian-12-standard">Debian 12 (Bookworm)</option>
@@ -203,7 +203,7 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, nodes }: CreateVmMod
           </div>
 
           {/* Dialog Footer */}
-          <DialogFooter className="pt-3 border-t border-slate-800">
+          <DialogFooter className="pt-3 border-t border-slate-200 dark:border-slate-800">
             <Button
               type="button"
               variant="secondary"

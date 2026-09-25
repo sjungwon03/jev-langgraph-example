@@ -496,20 +496,20 @@ export default function ResourceRequestsPage() {
 
       {/* Modal 1: Developer New Resource Request Modal */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 max-w-lg">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg text-white">
-              <PlusCircle className="w-5 h-5 text-emerald-400" />
+            <DialogTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-white">
+              <PlusCircle className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
               신규 자원 요청서 작성
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-400">
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
               인프라팀에 가상머신 또는 컴퓨팅 자원 증설을 요청합니다. 승인 시 Proxmox 클러스터에 자동 생성됩니다.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreateSubmit} className="space-y-4 py-2">
             <div>
-              <label className="text-xs font-medium text-slate-300 block mb-1.5">
+              <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
                 요청 제목 *
               </label>
               <Input
@@ -517,36 +517,36 @@ export default function ResourceRequestsPage() {
                 value={reqTitle}
                 onChange={(e) => setReqTitle(e.target.value)}
                 required
-                className="bg-slate-950 border-slate-800 text-sm text-slate-100"
+                className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-slate-100"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1.5">
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
                   신청자 이름
                 </label>
                 <Input
                   value={requesterName}
                   disabled
-                  className="bg-slate-950/60 border-slate-800 text-xs text-slate-400"
+                  className="bg-slate-100 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1.5">
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
                   소속 부서 / 팀
                 </label>
                 <Input
                   value={department}
                   disabled
-                  className="bg-slate-950/60 border-slate-800 text-xs text-slate-400"
+                  className="bg-slate-100 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1.5">
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
                   CPU Cores
                 </label>
                 <Input
@@ -555,11 +555,11 @@ export default function ResourceRequestsPage() {
                   max="16"
                   value={reqCores}
                   onChange={(e) => setReqCores(Number(e.target.value))}
-                  className="bg-slate-950 border-slate-800 text-sm text-slate-100"
+                  className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-slate-100"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1.5">
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
                   RAM (MB)
                 </label>
                 <Input
@@ -569,11 +569,11 @@ export default function ResourceRequestsPage() {
                   max="65536"
                   value={reqMemory}
                   onChange={(e) => setReqMemory(Number(e.target.value))}
-                  className="bg-slate-950 border-slate-800 text-sm text-slate-100"
+                  className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-slate-100"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1.5">
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
                   Disk (GB)
                 </label>
                 <Input
@@ -582,25 +582,25 @@ export default function ResourceRequestsPage() {
                   max="500"
                   value={reqDisk}
                   onChange={(e) => setReqDisk(Number(e.target.value))}
-                  className="bg-slate-950 border-slate-800 text-sm text-slate-100"
+                  className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-slate-100"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-medium text-slate-300 block mb-1.5">
+              <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
                 희망 인스턴스 호스트명 (선택)
               </label>
               <Input
                 placeholder="예: order-api-dev"
                 value={reqVmName}
                 onChange={(e) => setReqVmName(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-sm text-slate-100"
+                className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-slate-100"
               />
             </div>
 
             <div>
-              <label className="text-xs font-medium text-slate-300 block mb-1.5">
+              <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
                 신청 목적 및 상세 사유 *
               </label>
               <textarea
@@ -609,16 +609,16 @@ export default function ResourceRequestsPage() {
                 value={reqReason}
                 onChange={(e) => setReqReason(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-slate-800 rounded-md p-2.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md p-2.5 text-xs text-slate-900 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50"
               />
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-slate-200 dark:border-slate-800">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="border-slate-800 text-slate-300 hover:text-white"
+                className="border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               >
                 취소
               </Button>
@@ -636,31 +636,31 @@ export default function ResourceRequestsPage() {
 
       {/* Modal 2: Infra Team Review & Auto-Provision Modal */}
       <Dialog open={!!reviewTarget} onOpenChange={(open) => !open && setReviewTarget(null)}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 max-w-lg">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg text-white">
-              <ClipboardCheck className="w-5 h-5 text-amber-400" />
+            <DialogTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-white">
+              <ClipboardCheck className="w-5 h-5 text-amber-500 dark:text-amber-400" />
               자원 요청 심사: [{reviewTarget?.id}]
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-400">
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
               {reviewTarget?.title} ({reviewTarget?.requesterName} • {reviewTarget?.department})
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleReviewSubmit} className="space-y-4 py-2">
-            <div className="p-3 rounded-lg bg-slate-950/80 border border-slate-800 space-y-2 text-xs">
-              <div className="text-slate-400">
-                <strong>신청 스펙: </strong>
+            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+              <div className="text-slate-600 dark:text-slate-400">
+                <strong className="text-slate-800 dark:text-slate-200">신청 스펙: </strong>
                 {reviewTarget?.spec.cores} Cores / {reviewTarget?.spec.memory} MB RAM / {reviewTarget?.spec.disk} GB Disk
               </div>
-              <div className="text-slate-400">
-                <strong>신청 사유: </strong>
+              <div className="text-slate-600 dark:text-slate-400">
+                <strong className="text-slate-800 dark:text-slate-200">신청 사유: </strong>
                 {reviewTarget?.reason}
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-medium text-slate-300 block mb-1.5">
+              <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
                 심사 결정 *
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -669,11 +669,11 @@ export default function ResourceRequestsPage() {
                   onClick={() => setReviewDecision('APPROVE')}
                   className={`p-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-all ${
                     reviewDecision === 'APPROVE'
-                      ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300 shadow-md'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-md'
+                      : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                   승인 및 자동 프로비저닝
                 </button>
                 <button
@@ -681,11 +681,11 @@ export default function ResourceRequestsPage() {
                   onClick={() => setReviewDecision('REJECT')}
                   className={`p-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-all ${
                     reviewDecision === 'REJECT'
-                      ? 'bg-rose-950/40 border-rose-500 text-rose-300 shadow-md'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                      ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-500 text-rose-700 dark:text-rose-300 shadow-md'
+                      : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
-                  <XCircle className="w-4 h-4 text-rose-400" />
+                  <XCircle className="w-4 h-4 text-rose-500 dark:text-rose-400" />
                   요청 반려
                 </button>
               </div>
@@ -693,13 +693,13 @@ export default function ResourceRequestsPage() {
 
             {reviewDecision === 'APPROVE' && (
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1.5">
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
                   프로비저닝 대상 노드 (Target Node)
                 </label>
                 <select
                   value={targetNode}
                   onChange={(e) => setTargetNode(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-md p-2 text-xs text-slate-200"
+                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-md p-2 text-xs text-slate-900 dark:text-slate-200"
                 >
                   {availableNodes.length > 0 ? (
                     availableNodes.map((n) => {
@@ -718,23 +718,23 @@ export default function ResourceRequestsPage() {
             )}
 
             <div>
-              <label className="text-xs font-medium text-slate-300 block mb-1.5">
+              <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
                 검토 코멘트
               </label>
               <Input
                 value={reviewComment}
                 onChange={(e) => setReviewComment(e.target.value)}
                 placeholder="검토 의견 또는 반려 사유를 입력하세요"
-                className="bg-slate-950 border-slate-800 text-xs text-slate-100"
+                className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-100"
               />
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-slate-200 dark:border-slate-800">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setReviewTarget(null)}
-                className="border-slate-800 text-slate-300 hover:text-white"
+                className="border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               >
                 닫기
               </Button>
