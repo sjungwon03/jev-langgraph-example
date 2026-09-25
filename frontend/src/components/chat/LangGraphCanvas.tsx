@@ -286,8 +286,10 @@ export function LangGraphCanvas({
       } else if (curr === 'tool_executor') {
         targetEdgeId = 'e-safety-tool';
       } else if (curr === 'synthesizer') {
-        // Did we come from tool_executor or router bypass?
-        if (executionState?.activeTool) {
+        // Did we come from tool_executor, safety_check (HITL interrupted), or router bypass?
+        if (prev === 'safety_check' || executionState?.statusMessage?.includes('고위험') || executionState?.statusMessage?.includes('차단')) {
+          targetEdgeId = 'e-safety-synth-interrupted';
+        } else if (executionState?.activeTool || prev === 'tool_executor' || executionState?.visitedNodeIds?.includes('tool_executor')) {
           targetEdgeId = 'e-tool-synth';
         } else {
           targetEdgeId = 'e-router-synth-bypass';
@@ -516,14 +518,23 @@ export function LangGraphCanvas({
         if (!pts) return;
 
         const isTraversingNow = traversal.activeEdgeId === edge.id;
-        const isFromActive = activeNode === edge.from;
-        const isToActive = activeNode === edge.to;
-        const isExternalActive =
-          (edge.to === 'llm_service' && exec?.isLlmActive) ||
-          (edge.to === 'jev_service' && exec?.isJevActive);
 
-        // Has this edge been traversed in this conversation?
-        const isVisitedEdge = visitedSet.has(edge.from) && visitedSet.has(edge.to);
+        // Has this edge ACTUALLY been traversed in this specific execution path?
+        let isVisitedEdge = visitedSet.has(edge.from) && visitedSet.has(edge.to);
+        if (edge.id === 'e-router-synth-bypass') {
+          // Only true if router bypassed safety gate directly to synthesizer
+          isVisitedEdge = isVisitedEdge && !visitedSet.has('safety_check') && !visitedSet.has('tool_executor');
+        } else if (edge.id === 'e-router-safety') {
+          isVisitedEdge = visitedSet.has('safety_check');
+        } else if (edge.id === 'e-safety-tool') {
+          // Guardrail passed to tool execution
+          isVisitedEdge = visitedSet.has('safety_check') && visitedSet.has('tool_executor');
+        } else if (edge.id === 'e-safety-synth-interrupted') {
+          // ONLY true if safety check interrupted to synthesizer for HITL approval (tool_executor was NOT visited)
+          isVisitedEdge = visitedSet.has('safety_check') && visitedSet.has('synthesizer') && !visitedSet.has('tool_executor');
+        } else if (edge.id === 'e-tool-synth') {
+          isVisitedEdge = visitedSet.has('tool_executor') && visitedSet.has('synthesizer');
+        }
 
         ctx.save();
         if (edge.dashed) {
@@ -535,19 +546,15 @@ export function LangGraphCanvas({
           ctx.shadowBlur = 18;
           ctx.lineWidth = 3.5;
           ctx.strokeStyle = edge.color;
-        } else if (isFromActive || isToActive || isExternalActive) {
-          ctx.shadowColor = edge.color;
-          ctx.shadowBlur = 10;
-          ctx.lineWidth = 2.4;
-          ctx.strokeStyle = edge.color;
         } else if (isVisitedEdge) {
-          ctx.shadowBlur = 4;
-          ctx.lineWidth = 1.8;
-          ctx.strokeStyle = `${edge.color}aa`;
+          ctx.shadowColor = edge.color;
+          ctx.shadowBlur = 8;
+          ctx.lineWidth = 2.2;
+          ctx.strokeStyle = edge.color;
         } else {
           ctx.shadowBlur = 0;
           ctx.lineWidth = 1.1;
-          ctx.strokeStyle = edge.isExternalBus ? 'rgba(51, 65, 85, 0.25)' : 'rgba(71, 85, 105, 0.3)';
+          ctx.strokeStyle = 'rgba(71, 85, 105, 0.3)';
         }
 
         ctx.beginPath();
@@ -556,7 +563,7 @@ export function LangGraphCanvas({
         ctx.stroke();
         ctx.restore();
 
-        // Edge label (highlight if active or visited)
+        // Edge label (highlight ONLY if traversing now or actually visited)
         if (edge.label) {
           const mid = getBezierPoint(pts.p0, pts.p1, pts.p2, pts.p3, 0.5);
           ctx.save();
@@ -565,10 +572,10 @@ export function LangGraphCanvas({
           const bw = textMetrics.width + 10;
           const bh = 15;
 
-          const isHighlighted = isTraversingNow || isVisitedEdge || isFromActive || isToActive;
+          const isHighlighted = isTraversingNow || isVisitedEdge;
           ctx.fillStyle = isHighlighted ? 'rgba(15, 23, 42, 0.96)' : 'rgba(10, 15, 26, 0.85)';
-          ctx.strokeStyle = isHighlighted ? edge.color : 'rgba(51, 65, 85, 0.5)';
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = isHighlighted ? edge.color : 'rgba(51, 65, 85, 0.4)';
+          ctx.lineWidth = isHighlighted ? 1.5 : 1;
           drawRoundedRect(ctx, mid.x - bw / 2, mid.y - bh / 2, bw, bh, 3);
           ctx.fill();
           ctx.stroke();
