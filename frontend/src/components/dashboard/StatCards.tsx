@@ -49,16 +49,16 @@ export function StatCards({ summary }: { summary: ClusterSummary | null }) {
       {stats.map((stat, i) => {
         const Icon = stat.icon;
         return (
-          <Card key={i} className="border-slate-800/80 bg-slate-900/50 hover:bg-slate-900/80 transition-colors">
+          <Card key={i} className="border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors shadow-sm">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-400 font-medium">{stat.title}</p>
-                <h4 className="text-xl font-bold text-slate-100 mt-1 font-mono tracking-tight">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{stat.title}</p>
+                <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono tracking-tight">
                   {stat.value}
                 </h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">{stat.desc}</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{stat.desc}</p>
               </div>
-              <div className={`w-9 h-9 rounded-lg ${stat.bgColor} border border-slate-700/50 flex items-center justify-center ${stat.color}`}>
+              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 flex items-center justify-center text-slate-700 dark:text-slate-200">
                 <Icon className="w-4 h-4" />
               </div>
             </CardContent>

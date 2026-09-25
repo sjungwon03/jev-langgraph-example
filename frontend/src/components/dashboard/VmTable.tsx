@@ -131,74 +131,74 @@ export function VmTable({ vms, onActionComplete }: VmTableProps) {
         </div>
       )}
 
-      <CardHeader className="px-5 py-4 border-b border-slate-800/80 flex flex-row items-center justify-between space-y-0">
+      <CardHeader className="px-5 py-4 border-b border-slate-200 dark:border-slate-800/80 flex flex-row items-center justify-between space-y-0">
         <div>
-          <h3 className="font-semibold text-slate-100 text-sm">가상머신 (QEMU) & 컨테이너 (LXC)</h3>
-          <p className="text-xs text-slate-400">클러스터 내 인프라 인스턴스 전원 및 수명주기 제어</p>
+          <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">가상머신 (QEMU) & 컨테이너 (LXC)</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">클러스터 내 인프라 인스턴스 전원 및 수명주기 제어</p>
         </div>
-        <span className="text-xs text-slate-400 font-mono">총 {vms.length}대</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">총 {vms.length}대</span>
       </CardHeader>
 
       <div className="overflow-x-auto">
         <Table className="text-xs">
-          <TableHeader className="bg-slate-900/50 uppercase font-mono text-[11px]">
-            <TableRow className="border-slate-800">
-              <TableHead className="py-3 px-4 text-slate-400">VMID</TableHead>
-              <TableHead className="py-3 px-4 text-slate-400">인스턴스 이름</TableHead>
-              <TableHead className="py-3 px-4 text-slate-400">유형</TableHead>
-              <TableHead className="py-3 px-4 text-slate-400">노드</TableHead>
-              <TableHead className="py-3 px-4 text-slate-400">상태</TableHead>
-              <TableHead className="py-3 px-4 text-slate-400">vCPU</TableHead>
-              <TableHead className="py-3 px-4 text-slate-400">메모리 (할당량)</TableHead>
-              <TableHead className="py-3 px-4 text-right text-slate-400">제어 작업</TableHead>
+          <TableHeader className="bg-slate-50 dark:bg-slate-900/50 uppercase font-mono text-[11px]">
+            <TableRow className="border-slate-200 dark:border-slate-800">
+              <TableHead className="py-3 px-4 text-slate-600 dark:text-slate-400">VMID</TableHead>
+              <TableHead className="py-3 px-4 text-slate-600 dark:text-slate-400">인스턴스 이름</TableHead>
+              <TableHead className="py-3 px-4 text-slate-600 dark:text-slate-400">유형</TableHead>
+              <TableHead className="py-3 px-4 text-slate-600 dark:text-slate-400">노드</TableHead>
+              <TableHead className="py-3 px-4 text-slate-600 dark:text-slate-400">상태</TableHead>
+              <TableHead className="py-3 px-4 text-slate-600 dark:text-slate-400">vCPU</TableHead>
+              <TableHead className="py-3 px-4 text-slate-600 dark:text-slate-400">메모리 (할당량)</TableHead>
+              <TableHead className="py-3 px-4 text-right text-slate-600 dark:text-slate-400">제어 작업</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody className="divide-y divide-slate-800/50">
+          <TableBody className="divide-y divide-slate-200 dark:divide-slate-800/50">
             {vms.map((vm) => {
               const isRunning = vm.status === 'running';
               const isLoading = loadingVm === vm.vmid;
               const memAllocatedGB = ((vm.maxmem || 0) / 1024 / 1024 / 1024).toFixed(1);
 
               return (
-                <TableRow key={vm.vmid} className="hover:bg-slate-800/40 border-slate-800/50">
-                  <TableCell className="py-3.5 px-4 font-mono font-medium text-slate-200">
+                <TableRow key={vm.vmid} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 border-slate-200 dark:border-slate-800/50">
+                  <TableCell className="py-3.5 px-4 font-mono font-medium text-slate-800 dark:text-slate-200">
                     {vm.vmid}
                   </TableCell>
                   <TableCell
                     onClick={() => setSelectedDetailVm(vm)}
-                    className="py-3.5 px-4 font-medium text-slate-100 hover:text-white cursor-pointer transition-colors"
+                    className="py-3.5 px-4 font-medium text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-white cursor-pointer transition-colors"
                     title="클릭하여 상세 하드웨어 사양 및 모니터링 조회"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>{vm.name}</span>
-                      <Info className="w-3 h-3 text-slate-500 hover:text-slate-300" />
+                      <Info className="w-3 h-3 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300" />
                     </div>
                   </TableCell>
-                  <TableCell className="py-3.5 px-4 font-mono text-slate-400">
-                    <Badge variant="outline" className="bg-slate-800/80 border-slate-700/80 text-[10px] py-0 px-1.5 font-mono text-slate-300">
+                  <TableCell className="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400">
+                    <Badge variant="outline" className="bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-[10px] py-0 px-1.5 font-mono text-slate-700 dark:text-slate-300">
                       {vm.type.toUpperCase()}
                     </Badge>
                   </TableCell>
-                  <TableCell className="py-3.5 px-4 text-slate-300 font-mono">{vm.node}</TableCell>
+                  <TableCell className="py-3.5 px-4 text-slate-700 dark:text-slate-300 font-mono">{vm.node}</TableCell>
                   <TableCell className="py-3.5 px-4">
                     <Badge
                       variant="outline"
                       className={`inline-flex items-center gap-1.5 text-[10px] font-mono py-0.5 px-2 ${
                         isRunning
-                          ? 'bg-emerald-950/30 text-emerald-300 border-emerald-800/40'
-                          : 'bg-slate-800/60 text-slate-400 border-slate-700/60'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/40'
+                          : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700/60'
                       }`}
                     >
                       <span
                         className={`w-1.5 h-1.5 rounded-full ${
-                          isRunning ? 'bg-emerald-400' : 'bg-slate-500'
+                          isRunning ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400 dark:bg-slate-500'
                         }`}
                       />
                       {vm.status.toUpperCase()}
                     </Badge>
                   </TableCell>
-                  <TableCell className="py-3.5 px-4 font-mono text-slate-300">{vm.cpus || 2} Cores</TableCell>
-                  <TableCell className="py-3.5 px-4 font-mono text-slate-300">{memAllocatedGB} GB</TableCell>
+                  <TableCell className="py-3.5 px-4 font-mono text-slate-700 dark:text-slate-300">{vm.cpus || 2} Cores</TableCell>
+                  <TableCell className="py-3.5 px-4 font-mono text-slate-700 dark:text-slate-300">{memAllocatedGB} GB</TableCell>
                   <TableCell className="py-3.5 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       {!isRunning ? (

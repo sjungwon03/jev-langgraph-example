@@ -14,6 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useTheme } from '@/lib/theme-context';
 
 export interface GraphExecutionState {
   activeNodeId: string | null;
@@ -239,6 +240,13 @@ export function LangGraphCanvas({
 }: LangGraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const { theme } = useTheme();
+  const themeRef = useRef(theme);
+
+  useEffect(() => {
+    themeRef.current = theme;
+  }, [theme]);
 
   const [selectedNodeId, setSelectedNodeId] = useState<string>('router');
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -479,12 +487,14 @@ export function LangGraphCanvas({
       ctx.save();
       ctx.scale(dpr, dpr);
 
-      // Deep dark cyber background
-      ctx.fillStyle = '#040711';
+      const isDark = themeRef.current !== 'light';
+
+      // Cyber background (dark / light)
+      ctx.fillStyle = isDark ? '#040711' : '#f8fafc';
       ctx.fillRect(0, 0, cw, ch);
 
       // Subtle cyber grid dots
-      ctx.fillStyle = 'rgba(51, 65, 85, 0.2)';
+      ctx.fillStyle = isDark ? 'rgba(51, 65, 85, 0.2)' : 'rgba(148, 163, 184, 0.35)';
       const step = 22;
       for (let x = 11; x < cw; x += step) {
         for (let y = 11; y < ch; y += step) {
@@ -554,7 +564,7 @@ export function LangGraphCanvas({
         } else {
           ctx.shadowBlur = 0;
           ctx.lineWidth = 1.1;
-          ctx.strokeStyle = 'rgba(71, 85, 105, 0.3)';
+          ctx.strokeStyle = isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(148, 163, 184, 0.5)';
         }
 
         ctx.beginPath();
@@ -573,14 +583,18 @@ export function LangGraphCanvas({
           const bh = 15;
 
           const isHighlighted = isTraversingNow || isVisitedEdge;
-          ctx.fillStyle = isHighlighted ? 'rgba(15, 23, 42, 0.96)' : 'rgba(10, 15, 26, 0.85)';
-          ctx.strokeStyle = isHighlighted ? edge.color : 'rgba(51, 65, 85, 0.4)';
+          ctx.fillStyle = isHighlighted
+            ? (isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.96)')
+            : (isDark ? 'rgba(10, 15, 26, 0.85)' : 'rgba(241, 245, 249, 0.92)');
+          ctx.strokeStyle = isHighlighted
+            ? edge.color
+            : (isDark ? 'rgba(51, 65, 85, 0.4)' : 'rgba(203, 213, 225, 0.85)');
           ctx.lineWidth = isHighlighted ? 1.5 : 1;
           drawRoundedRect(ctx, mid.x - bw / 2, mid.y - bh / 2, bw, bh, 3);
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = isHighlighted ? edge.color : '#64748b';
+          ctx.fillStyle = isHighlighted ? edge.color : (isDark ? '#64748b' : '#64748b');
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(edge.label, mid.x, mid.y);
@@ -692,7 +706,7 @@ export function LangGraphCanvas({
 
         // Selected / Hovered indicator
         if (isSelected) {
-          ctx.shadowColor = '#ffffff';
+          ctx.shadowColor = isDark ? '#ffffff' : '#0284c7';
           ctx.shadowBlur = 8;
         }
 
@@ -702,28 +716,28 @@ export function LangGraphCanvas({
           grad.addColorStop(0, bgGradient[0]);
           grad.addColorStop(1, bgGradient[1]);
         } else if (node.isExternal) {
-          grad.addColorStop(0, 'rgba(10, 15, 30, 0.95)');
-          grad.addColorStop(1, 'rgba(15, 23, 42, 0.92)');
+          grad.addColorStop(0, isDark ? 'rgba(10, 15, 30, 0.95)' : '#ffffff');
+          grad.addColorStop(1, isDark ? 'rgba(15, 23, 42, 0.92)' : '#f8fafc');
         } else if (isVisited) {
-          grad.addColorStop(0, 'rgba(15, 23, 42, 0.98)');
-          grad.addColorStop(1, 'rgba(25, 35, 55, 0.9)');
+          grad.addColorStop(0, isDark ? 'rgba(15, 23, 42, 0.98)' : '#ffffff');
+          grad.addColorStop(1, isDark ? 'rgba(25, 35, 55, 0.9)' : '#f1f5f9');
         } else {
-          grad.addColorStop(0, 'rgba(15, 23, 42, 0.94)');
-          grad.addColorStop(1, 'rgba(30, 41, 59, 0.85)');
+          grad.addColorStop(0, isDark ? 'rgba(15, 23, 42, 0.94)' : '#ffffff');
+          grad.addColorStop(1, isDark ? 'rgba(30, 41, 59, 0.85)' : '#f8fafc');
         }
 
         ctx.fillStyle = grad;
         ctx.strokeStyle = isActive || isExternalActive
           ? accentColor
           : isSelected
-          ? '#e2e8f0'
+          ? (isDark ? '#e2e8f0' : '#0f172a')
           : isVisited
           ? `${accentColor}bb`
           : isHovered
           ? accentColor
           : node.isExternal
-          ? 'rgba(56, 189, 248, 0.35)'
-          : 'rgba(51, 65, 85, 0.85)';
+          ? (isDark ? 'rgba(56, 189, 248, 0.35)' : 'rgba(56, 189, 248, 0.6)')
+          : (isDark ? 'rgba(51, 65, 85, 0.85)' : '#cbd5e1');
         ctx.lineWidth = isActive || isExternalActive || isSelected ? 2 : 1.2;
 
         drawRoundedRect(ctx, node.x, node.y, node.w, node.h, node.isExternal ? 10 : 8);
@@ -750,7 +764,7 @@ export function LangGraphCanvas({
         // Node Title
         ctx.save();
         ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = isActive || isExternalActive ? '#ffffff' : (isDark ? '#f8fafc' : '#0f172a');
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         const titleY = node.h <= 40 ? node.y + 8 : node.y + 10;
@@ -758,14 +772,14 @@ export function LangGraphCanvas({
 
         // Node Subtitle / Role
         ctx.font = '9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillStyle = isActive || isExternalActive ? '#e2e8f0' : '#94a3b8';
+        ctx.fillStyle = isActive || isExternalActive ? '#e2e8f0' : (isDark ? '#94a3b8' : '#64748b');
         const subY = node.h <= 40 ? node.y + 21 : node.y + 26;
         ctx.fillText(node.sub, node.x + 24, subY);
 
         // Tool Executor Special: If a tool is active, display tool name!
         if (node.id === 'tool_executor' && exec?.activeTool) {
           ctx.font = 'bold 9px monospace';
-          ctx.fillStyle = '#f0abfc';
+          ctx.fillStyle = isDark ? '#f0abfc' : (isActive ? '#f0abfc' : '#9333ea');
           let toolLabel = `⚡ ${exec.activeTool}()`;
           if (exec.activeTool === 'create_resource_request') {
             toolLabel = '⚡ create_req() [승인요청 접수]';
@@ -775,22 +789,22 @@ export function LangGraphCanvas({
           ctx.fillText(toolLabel, node.x + 24, node.y + 39);
         } else if (node.id === 'router' && exec?.intent && exec.intent !== 'llm_not_connected') {
           ctx.font = 'bold 8.5px monospace';
-          ctx.fillStyle = '#7dd3fc';
+          ctx.fillStyle = isDark ? '#7dd3fc' : (isActive ? '#7dd3fc' : '#0284c7');
           ctx.fillText(`intent: ${exec.intent}`, node.x + 24, node.y + 39);
         } else if (node.id === 'synthesizer' && (isActive || isVisited || exec?.isLlmActive)) {
           ctx.font = 'bold 8.5px monospace';
-          ctx.fillStyle = '#6ee7b7';
+          ctx.fillStyle = isDark ? '#6ee7b7' : (isActive ? '#6ee7b7' : '#059669');
           ctx.fillText(isActive || exec?.isLlmActive ? '⚡ 한국어 답변 합성 중' : '✓ 응답 합성 완료', node.x + 24, node.y + 39);
         } else if (node.id === 'jev_service' && (isActive || isVisited || exec?.isJevActive)) {
           ctx.font = 'bold 8.5px monospace';
-          ctx.fillStyle = '#34d399';
+          ctx.fillStyle = isDark ? '#34d399' : (isActive ? '#34d399' : '#059669');
           ctx.fillText(isActive || exec?.isJevActive ? '⚡ 거버넌스 정책 검증 중' : '✓ 거버넌스 승인 완료', node.x + 24, node.y + 39);
         }
 
         // Visited Checkmark Badge
         if (isVisited && !isActive) {
           ctx.font = 'bold 9px monospace';
-          ctx.fillStyle = '#34d399';
+          ctx.fillStyle = isDark ? '#34d399' : '#059669';
           ctx.textAlign = 'right';
           ctx.textBaseline = 'top';
           ctx.fillText('✓ DONE', node.x + node.w - 8, node.y + 8);
@@ -882,23 +896,23 @@ export function LangGraphCanvas({
   return (
     <div
       ref={containerRef}
-      className={`flex flex-col h-full w-full bg-[#040711] relative select-none overflow-hidden ${className}`}
+      className={`flex flex-col h-full w-full bg-slate-50 dark:bg-[#040711] relative select-none overflow-hidden ${className}`}
     >
       {/* Top Floating Status Indicator */}
       <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between pointer-events-none">
-        <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur border border-slate-800 px-2.5 py-1 rounded-md text-xs shadow-md">
-          <GitFork className="w-3.5 h-3.5 text-blue-400" />
-          <span className="font-semibold text-slate-200">LangGraph 상태 머신</span>
+        <div className="flex items-center gap-2 bg-white/95 dark:bg-slate-900/90 backdrop-blur border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-md text-xs shadow-md">
+          <GitFork className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+          <span className="font-semibold text-slate-800 dark:text-slate-200">LangGraph 상태 머신</span>
           {effectiveActiveId ? (
             <Badge
               variant="outline"
-              className="text-[10px] py-0 px-1.5 font-mono text-emerald-300 border-emerald-500/50 bg-emerald-950/50 animate-pulse flex items-center gap-1"
+              className="text-[10px] py-0 px-1.5 font-mono text-emerald-600 dark:text-emerald-300 border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/50 animate-pulse flex items-center gap-1"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
               <span>탐색 중: {effectiveActiveId}</span>
             </Badge>
           ) : (
-            <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono text-slate-400 border-slate-700 bg-slate-800/40">
+            <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/40">
               대기 (Standby)
             </Badge>
           )}
@@ -906,8 +920,8 @@ export function LangGraphCanvas({
 
         {/* Live Active Tool Pill */}
         {executionState?.activeTool && (
-          <div className="flex items-center gap-1.5 bg-purple-950/80 backdrop-blur border border-purple-800/80 px-2.5 py-1 rounded-md text-[11px] font-mono text-purple-300 animate-pulse shadow-md">
-            <Wrench className="w-3 h-3 text-purple-400" />
+          <div className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-950/80 backdrop-blur border border-purple-200 dark:border-purple-800/80 px-2.5 py-1 rounded-md text-[11px] font-mono text-purple-700 dark:text-purple-300 animate-pulse shadow-md">
+            <Wrench className="w-3 h-3 text-purple-600 dark:text-purple-400" />
             <span>호출: {executionState.activeTool}()</span>
           </div>
         )}
@@ -924,29 +938,29 @@ export function LangGraphCanvas({
       </div>
 
       {/* Live Status Message & Traversal Trail Banner */}
-      <div className="px-3 py-1.5 border-t border-slate-800/80 bg-slate-900/70 text-[11px] flex items-center justify-between text-slate-300 shrink-0 font-mono">
+      <div className="px-3 py-1.5 border-t border-slate-200 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/70 text-[11px] flex items-center justify-between text-slate-700 dark:text-slate-300 shrink-0 font-mono">
         <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
           {effectiveActiveId ? (
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping shrink-0" />
           ) : (
-            <span className="w-2 h-2 rounded-full bg-slate-600 shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-600 shrink-0" />
           )}
-          <span className="text-slate-400 shrink-0 font-semibold">
+          <span className="text-slate-500 dark:text-slate-400 shrink-0 font-semibold">
             {effectiveActiveId ? '실시간 탐색:' : '탐색 대기:'}
           </span>
-          <span className="text-blue-200 font-sans truncate">
+          <span className="text-blue-700 dark:text-blue-200 font-sans truncate">
             {executionState?.statusMessage || '채팅 메시지를 전송하면 LangGraph 상태 머신이 노드를 탐색합니다.'}
           </span>
         </div>
 
         {/* Traversal Summary Trail */}
         {executionState?.visitedNodeIds && executionState.visitedNodeIds.length > 0 && (
-          <div className="hidden sm:flex items-center gap-1 text-[10px] text-slate-400 font-mono shrink-0 pl-2">
+          <div className="hidden sm:flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 font-mono shrink-0 pl-2">
             <span>트레일:</span>
             {executionState.visitedNodeIds.map((nid, idx) => (
               <span key={nid} className="flex items-center gap-0.5">
-                <span className="text-emerald-400">{nid}</span>
-                {idx < executionState.visitedNodeIds.length - 1 && <ArrowRight className="w-2.5 h-2.5 text-slate-600" />}
+                <span className="text-emerald-600 dark:text-emerald-400">{nid}</span>
+                {idx < executionState.visitedNodeIds.length - 1 && <ArrowRight className="w-2.5 h-2.5 text-slate-400 dark:text-slate-600" />}
               </span>
             ))}
           </div>
@@ -955,20 +969,20 @@ export function LangGraphCanvas({
 
       {/* Selected Node Details Drawer */}
       {!compact && selectedNode && (
-        <div className="p-3 border-t border-slate-800/90 bg-slate-950/95 shrink-0 text-xs">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800/90 bg-white/95 dark:bg-slate-950/95 shrink-0 text-xs">
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-400" />
-              <span className="font-bold text-slate-100">{selectedNode.name}</span>
-              <span className="text-[10px] font-mono text-slate-500">ID: {selectedNode.id}</span>
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              <span className="font-bold text-slate-900 dark:text-slate-100">{selectedNode.name}</span>
+              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">ID: {selectedNode.id}</span>
             </div>
             {effectiveActiveId === selectedNode.id && (
-              <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-500/40 animate-pulse">
+              <Badge variant="outline" className="text-[10px] text-emerald-600 dark:text-emerald-400 border-emerald-500/40 animate-pulse">
                 현재 활성화 노드
               </Badge>
             )}
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
             {selectedNode.description}
           </p>
         </div>

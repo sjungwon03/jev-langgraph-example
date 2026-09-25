@@ -48,7 +48,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-[#070b13] text-slate-900 dark:text-slate-100">
       <Header onRefresh={loadData} isRefreshing={loading} />
 
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -58,8 +58,8 @@ export default function DashboardPage() {
         {/* Proxmox Nodes Grid */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-100">클러스터 컴퓨트 노드</h2>
-            <span className="text-xs text-slate-400 font-mono">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">클러스터 컴퓨트 노드</h2>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
               {summary?.nodes.length || 0} Nodes
             </span>
           </div>
@@ -74,14 +74,14 @@ export default function DashboardPage() {
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-semibold text-slate-100">가상 인스턴스 현황</h2>
-              <p className="text-xs text-slate-400">배포된 가상머신(QEMU) 및 컨테이너(LXC) 자원 및 라이프사이클 관리</p>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">가상 인스턴스 현황</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">배포된 가상머신(QEMU) 및 컨테이너(LXC) 자원 및 라이프사이클 관리</p>
             </div>
             {role === 'INFRA_TEAM' ? (
               <Button
                 onClick={() => setIsCreateModalOpen(true)}
                 size="sm"
-                className="flex items-center gap-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700"
+                className="flex items-center gap-1.5 text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 <span>새 인스턴스 배포</span>

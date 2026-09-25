@@ -518,25 +518,25 @@ export function ChatConsole() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       {/* Header Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-950 border-b border-slate-800/80 text-xs shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/80 text-xs shrink-0">
         <div className="flex items-center gap-2">
           {/* Session Sidebar Toggle Button */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsSessionSidebarOpen(!isSessionSidebarOpen)}
-            className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-900 border border-slate-800 h-7 px-2"
+            className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 h-7 px-2"
             title="대화 세션 목록 열기/닫기"
           >
             {isSessionSidebarOpen ? (
-              <PanelLeftClose className="w-3.5 h-3.5 text-blue-400" />
+              <PanelLeftClose className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             ) : (
               <PanelLeftOpen className="w-3.5 h-3.5 text-slate-400" />
             )}
             <span className="font-medium">세션 목록</span>
-            <Badge variant="outline" className="text-[10px] px-1 py-0 border-slate-700 bg-slate-900 text-slate-300">
+            <Badge variant="outline" className="text-[10px] px-1 py-0 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300">
               {sessions.length}
             </Badge>
           </Button>
@@ -545,19 +545,19 @@ export function ChatConsole() {
             variant="outline"
             size="sm"
             onClick={handleCreateNewSession}
-            className="flex items-center gap-1 text-xs text-emerald-400 border-emerald-900/60 bg-emerald-950/30 hover:bg-emerald-900/40 h-7 px-2.5"
+            className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 h-7 px-2.5"
             title="새 대화 세션 시작"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>새 세션</span>
           </Button>
 
-          <div className="h-4 w-px bg-slate-800 mx-1" />
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-1" />
 
-          <span className="font-semibold text-slate-200 truncate max-w-[200px]" title={activeSession?.title}>
+          <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]" title={activeSession?.title}>
             {activeSession?.title || '인프라 제어 콘솔'}
           </span>
-          <span className="text-[11px] text-slate-500 font-mono hidden md:inline">• LangGraph Orchestration</span>
+          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono hidden md:inline">• LangGraph Orchestration</span>
           <Badge
             variant={role === 'INFRA_TEAM' ? 'warning' : 'outline'}
             className="text-[10px] py-0 px-2 font-mono shrink-0"
@@ -574,14 +574,14 @@ export function ChatConsole() {
             onClick={() => setShowLiveGraph(!showLiveGraph)}
             className={`flex items-center gap-1.5 text-xs h-7 px-2.5 font-medium transition-colors ${
               showLiveGraph
-                ? 'bg-blue-950/80 text-blue-300 border border-blue-800/80 hover:bg-blue-900/60'
-                : 'text-slate-400 hover:text-slate-200 border border-slate-800/80 hover:bg-slate-900'
+                ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800/80 hover:bg-blue-200 dark:hover:bg-blue-900/60'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-900'
             }`}
           >
-            <GitFork className="w-3.5 h-3.5 text-blue-400" />
+            <GitFork className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>실시간 그래프 {showLiveGraph ? 'ON' : 'OFF'}</span>
             {executionState.activeNodeId && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-0.5" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping ml-0.5" />
             )}
           </Button>
 
@@ -590,7 +590,7 @@ export function ChatConsole() {
             variant="ghost"
             size="sm"
             onClick={() => setIsGraphModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-800/80 h-7 px-2.5"
+            className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800/80 h-7 px-2.5"
             title="그래프 전체 화면 모달"
           >
             <Maximize2 className="w-3.5 h-3.5" />
@@ -602,9 +602,9 @@ export function ChatConsole() {
             variant="ghost"
             size="sm"
             onClick={() => setIsDecisionModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-800/80 h-7 px-2.5"
+            className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800/80 h-7 px-2.5"
           >
-            <Activity className="w-3.5 h-3.5 text-slate-400" />
+            <Activity className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
             <span className="hidden sm:inline">실행 로그</span>
           </Button>
         </div>
@@ -614,18 +614,18 @@ export function ChatConsole() {
       <div className="flex-1 flex overflow-hidden">
         {/* 1. Left Collapsible Session Sidebar */}
         {isSessionSidebarOpen && (
-          <div className="w-64 min-w-[240px] max-w-[280px] bg-slate-950/95 border-r border-slate-800/80 flex flex-col h-full shrink-0 select-none">
+          <div className="w-64 min-w-[240px] max-w-[280px] bg-slate-50/90 dark:bg-slate-950/95 border-r border-slate-200 dark:border-slate-800/80 flex flex-col h-full shrink-0 select-none">
             {/* Session Sidebar Header */}
-            <div className="p-3 border-b border-slate-800/80 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-                <MessagesSquare className="w-4 h-4 text-blue-400" />
+            <div className="p-3 border-b border-slate-200 dark:border-slate-800/80 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <MessagesSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span>대화 세션 내역</span>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleCreateNewSession}
-                className="h-6 px-2 text-[11px] gap-1 text-slate-300 hover:text-white border-slate-700 bg-slate-900 hover:bg-slate-800"
+                className="h-6 px-2 text-[11px] gap-1 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <Plus className="w-3 h-3" />
                 <span>생성</span>
@@ -644,13 +644,13 @@ export function ChatConsole() {
                     onClick={() => handleSelectSession(sess.id)}
                     className={`group relative flex items-start gap-2.5 p-2.5 rounded-lg cursor-pointer transition-all border ${
                       isActive
-                        ? 'bg-blue-950/50 border-blue-600/60 shadow-sm shadow-blue-500/10 text-slate-100'
-                        : 'bg-slate-900/40 border-slate-800/50 hover:bg-slate-900/90 hover:border-slate-700 text-slate-400 hover:text-slate-200'
+                        ? 'bg-blue-100/70 dark:bg-blue-950/50 border-blue-400/80 dark:border-blue-600/60 shadow-sm shadow-blue-500/10 text-blue-950 dark:text-slate-100'
+                        : 'bg-white/80 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-900/90 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                   >
                     <MessageSquare
                       className={`w-4 h-4 mt-0.5 shrink-0 ${
-                        isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-400'
+                        isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-400'
                       }`}
                     />
 
@@ -672,7 +672,7 @@ export function ChatConsole() {
                     <button
                       onClick={(e) => handleDeleteSession(sess.id, e)}
                       title="세션 삭제"
-                      className="absolute right-2 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded"
+                      className="absolute right-2 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -682,9 +682,9 @@ export function ChatConsole() {
             </div>
 
             {/* Sidebar Footer info */}
-            <div className="p-2.5 border-t border-slate-800/80 text-[10px] text-slate-500 flex items-center justify-between">
+            <div className="p-2.5 border-t border-slate-200 dark:border-slate-800/80 text-[10px] text-slate-500 flex items-center justify-between">
               <span>총 {sessions.length}개 세션 보관 중</span>
-              <span className="text-slate-600">Auto-saved</span>
+              <span className="text-slate-400 dark:text-slate-600">Auto-saved</span>
             </div>
           </div>
         )}
@@ -692,11 +692,11 @@ export function ChatConsole() {
         {/* 2. Center: Chat Container */}
         <div
           className={`flex flex-col h-full overflow-hidden transition-all duration-300 ${
-            showLiveGraph ? 'flex-1 min-w-[320px] border-r border-slate-800/80' : 'w-full'
+            showLiveGraph ? 'flex-1 min-w-[320px] border-r border-slate-200 dark:border-slate-800/80' : 'w-full'
           }`}
         >
           {/* Messages area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50/50 dark:bg-slate-950/50">
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -705,8 +705,8 @@ export function ChatConsole() {
                 }`}
               >
                 {msg.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-md bg-slate-900 border border-slate-700/80 flex items-center justify-center text-slate-300 shrink-0 mt-0.5">
-                    <Terminal className="w-3.5 h-3.5 text-slate-300" />
+                  <div className="w-7 h-7 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0 mt-0.5 shadow-sm">
+                    <Terminal className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
                   </div>
                 )}
 
@@ -716,12 +716,12 @@ export function ChatConsole() {
                     className={`p-4 rounded-xl text-sm leading-relaxed ${
                       msg.role === 'user'
                         ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-slate-900/90 text-slate-200 border border-slate-800/90 shadow-sm'
+                        : 'bg-white dark:bg-slate-900/90 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800/90 shadow-sm'
                     }`}
                   >
                     {/* Live Thought Streaming Badge */}
                     {msg.thought && isStreaming && msg.id === messages[messages.length - 1]?.id && (
-                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-800 text-xs text-blue-400 font-mono animate-pulse">
+                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-200 dark:border-slate-800 text-xs text-blue-600 dark:text-blue-400 font-mono animate-pulse">
                         <Activity className="w-3.5 h-3.5 animate-spin" />
                         <span>{msg.thought}</span>
                       </div>
@@ -729,25 +729,25 @@ export function ChatConsole() {
 
                     {/* Decision info card */}
                     {msg.decision && (
-                      <div className="mb-3 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs space-y-1.5">
-                        <div className="flex items-center justify-between text-slate-400 font-mono">
-                          <span className="flex items-center gap-1.5 text-blue-400 font-semibold">
+                      <div className="mb-3 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 text-xs space-y-1.5">
+                        <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 font-mono">
+                          <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-semibold">
                             <GitFork className="w-3 h-3" />
                             {msg.decision.intent}
                           </span>
                           {msg.decision.latencyMs && (
-                            <span className="text-[10px] text-slate-500">
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
                               {msg.decision.latencyMs}ms
                             </span>
                           )}
                         </div>
-                        <div className="text-slate-300 text-[11px] leading-snug">
+                        <div className="text-slate-700 dark:text-slate-300 text-[11px] leading-snug">
                           {msg.decision.why}
                         </div>
                         {msg.decision.tool && (
-                          <div className="pt-1 flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
+                          <div className="pt-1 flex items-center gap-1.5 text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
                             <span>호출 도구:</span>
-                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-800 bg-emerald-950/50">
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50">
                               {msg.decision.tool}
                             </Badge>
                           </div>
@@ -761,37 +761,37 @@ export function ChatConsole() {
                         {msg.toolCalls.map((tc, idx) => (
                           <div
                             key={idx}
-                            className="px-2.5 py-1.5 rounded-lg bg-slate-950/60 border border-purple-900/40 font-mono text-xs flex items-center justify-between shadow-sm"
+                            className="px-2.5 py-1.5 rounded-lg bg-purple-50/70 dark:bg-slate-950/60 border border-purple-200 dark:border-purple-900/40 font-mono text-xs flex items-center justify-between shadow-sm"
                           >
                             <div className="flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                              <span className="text-purple-300 font-medium">
-                                ⚡ 도구 호출: <span className="text-purple-200">{tc.tool}()</span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-500 dark:bg-purple-400 animate-pulse" />
+                              <span className="text-purple-700 dark:text-purple-300 font-medium">
+                                ⚡ 도구 호출: <span className="text-purple-900 dark:text-purple-200">{tc.tool}()</span>
                               </span>
                             </div>
                             <div className="flex items-center gap-1.5 text-[10px]">
                               {tc.output ? (
                                 tc.tool === 'create_resource_request' ? (
-                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-amber-300 border-amber-800/80 bg-amber-950/50 flex items-center gap-1 font-semibold">
-                                    <Clock className="w-2.5 h-2.5 text-amber-400" />
+                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-950/50 flex items-center gap-1 font-semibold">
+                                    <Clock className="w-2.5 h-2.5 text-amber-500 dark:text-amber-400" />
                                     <span>⏳ 승인요청 대기 접수 (PENDING)</span>
                                   </Badge>
                                 ) : tc.tool === 'review_resource_request' ? (
-                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-emerald-300 border-emerald-800/80 bg-emerald-950/50 flex items-center gap-1 font-semibold">
-                                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/50 flex items-center gap-1 font-semibold">
+                                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500 dark:text-emerald-400" />
                                     <span>✅ 완전 승인 완료</span>
                                   </Badge>
                                 ) : tc.tool === 'list_resource_requests' ? (
-                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-blue-300 border-blue-800/80 bg-blue-950/50 flex items-center gap-1 font-semibold">
+                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800/80 bg-blue-50 dark:bg-blue-950/50 flex items-center gap-1 font-semibold">
                                     <span>✓ 목록 조회 완료</span>
                                   </Badge>
                                 ) : (
-                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-emerald-400 border-emerald-800/80 bg-emerald-950/40">
+                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/40">
                                     ✓ 실행 완료
                                   </Badge>
                                 )
                               ) : (
-                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-amber-400 border-amber-800/80 bg-amber-950/40 animate-pulse">
+                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-950/40 animate-pulse">
                                   실행 중...
                                 </Badge>
                               )}
@@ -806,23 +806,23 @@ export function ChatConsole() {
                       <MarkdownRenderer content={msg.content} />
                     ) : isStreaming ? (
                       <div className="flex items-center gap-1.5 py-1 text-slate-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce delay-100" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce delay-200" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 animate-bounce" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 animate-bounce delay-100" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 animate-bounce delay-200" />
                       </div>
                     ) : null}
 
                     {/* Safety Gate Confirmation Card (HITL) */}
                     {msg.confirmation && (
-                      <div className="mt-3 p-3.5 rounded-lg bg-amber-950/30 border border-amber-600/50 space-y-2.5">
-                        <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs">
+                      <div className="mt-3 p-3.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-600/50 space-y-2.5">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-semibold text-xs">
                           <ShieldAlert className="w-4 h-4 shrink-0" />
                           <span>파괴적 고위험 작업 확인 (보안 승인 필요)</span>
                         </div>
-                        <div className="text-xs text-slate-300">
+                        <div className="text-xs text-slate-700 dark:text-slate-300">
                           {msg.confirmation.description}
                         </div>
-                        <div className="flex items-center gap-2 pt-1 font-mono text-xs text-slate-400">
+                        <div className="flex items-center gap-2 pt-1 font-mono text-xs text-slate-500 dark:text-slate-400">
                           <span>노드: {msg.confirmation.node}</span>
                           <span>•</span>
                           <span>VMID: {msg.confirmation.vmid}</span>
@@ -831,7 +831,7 @@ export function ChatConsole() {
                           <Button
                             size="sm"
                             onClick={() => handleConfirmApproval(msg.id, msg.confirmation!.token, true)}
-                            className="bg-red-600 hover:bg-red-700 text-white text-xs h-7 px-3 font-semibold"
+                            className="bg-red-600 hover:bg-red-700 text-white text-xs h-7 px-3 font-semibold shadow-sm"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                             승인 및 실행
@@ -840,7 +840,7 @@ export function ChatConsole() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleConfirmApproval(msg.id, msg.confirmation!.token, false)}
-                            className="border-slate-700 hover:bg-slate-800 text-slate-300 text-xs h-7 px-3"
+                            className="border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs h-7 px-3"
                           >
                             <XCircle className="w-3.5 h-3.5 mr-1" />
                             취소 (반려)
@@ -862,7 +862,7 @@ export function ChatConsole() {
           </div>
 
           {/* Quick Prompts Bar */}
-          <div className="px-6 py-2 border-t border-slate-900 bg-slate-950/70 flex items-center gap-2 overflow-x-auto text-xs shrink-0">
+          <div className="px-6 py-2 border-t border-slate-200 dark:border-slate-900 bg-white/80 dark:bg-slate-950/70 flex items-center gap-2 overflow-x-auto text-xs shrink-0">
             <span className="text-[11px] text-slate-500 font-medium shrink-0 flex items-center gap-1">
               <ListFilter className="w-3 h-3 text-slate-400" />
               추천:
@@ -872,7 +872,7 @@ export function ChatConsole() {
                 key={idx}
                 onClick={() => handleSend(prompt)}
                 disabled={isStreaming}
-                className="whitespace-nowrap px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800/80 text-slate-300 hover:text-white border border-slate-800 transition-colors disabled:opacity-40 text-xs"
+                className="whitespace-nowrap px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 transition-colors disabled:opacity-40 text-xs"
               >
                 {prompt}
               </button>
@@ -880,7 +880,7 @@ export function ChatConsole() {
           </div>
 
           {/* Input Bar */}
-          <div className="p-4 border-t border-slate-800/80 bg-slate-950/95 shrink-0">
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-950/95 shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -897,12 +897,12 @@ export function ChatConsole() {
                     : '요청 입력 (예: "내 자원 요청 내역 조회", "테스트용 VM 2C 4GB 20GB 신청")...'
                 }
                 disabled={isStreaming}
-                className="flex-1 bg-slate-900/90 border-slate-800 focus-visible:ring-1 focus-visible:ring-blue-500 text-sm h-10"
+                className="flex-1 bg-slate-50 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 focus-visible:ring-1 focus-visible:ring-blue-500 text-sm h-10 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
               <Button
                 type="submit"
                 disabled={isStreaming || !input.trim()}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-4 h-10 shrink-0 font-medium"
+                className="bg-blue-600 hover:bg-blue-500 text-white px-4 h-10 shrink-0 font-medium shadow-sm"
               >
                 <Send className="w-4 h-4 mr-1.5" />
                 <span>전송</span>
@@ -913,7 +913,7 @@ export function ChatConsole() {
 
         {/* 3. Right: Live LangGraph Canvas Split Panel */}
         {showLiveGraph && (
-          <div className="w-[42%] min-w-[340px] max-w-[560px] flex flex-col h-full bg-slate-950 shrink-0">
+          <div className="w-[42%] min-w-[340px] max-w-[560px] flex flex-col h-full bg-slate-50 dark:bg-slate-950 shrink-0">
             <LangGraphCanvas
               executionState={executionState}
               onSelectNode={(nodeId) => {

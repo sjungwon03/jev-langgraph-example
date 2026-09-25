@@ -185,16 +185,16 @@ export default function ResourceRequestsPage() {
   });
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#070b13] overflow-y-auto">
+    <div className="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-[#070b13] overflow-y-auto text-slate-900 dark:text-slate-100">
       <Header onRefresh={loadData} isRefreshing={loading} />
 
       <main className="p-6 max-w-7xl w-full mx-auto space-y-6">
         {/* Banner Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/50 to-slate-950 border border-slate-800">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-gradient-to-r dark:from-slate-900/90 dark:via-slate-900/50 dark:to-slate-950 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <ClipboardCheck className="w-5 h-5 text-emerald-400" />
-              <h1 className="text-xl font-bold tracking-tight text-white">
+              <ClipboardCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
                 {role === 'INFRA_TEAM' ? '인프라 자원 승인 센터 (Infra Review)' : '개발팀 자원 요청 센터 (Dev Requests)'}
               </h1>
               <Badge
@@ -204,7 +204,7 @@ export default function ResourceRequestsPage() {
                 {role === 'INFRA_TEAM' ? '인프라 관리팀' : '서비스 개발팀'}
               </Badge>
             </div>
-            <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
               {role === 'INFRA_TEAM'
                 ? '개발팀에서 제출한 인프라 생성 및 디스크 증설 요청을 검토하고, 원클릭으로 Proxmox MCP 자동 프로비저닝을 실행합니다.'
                 : '신규 가상머신(VM) 및 컴퓨팅 자원이 필요한 경우 승인 요청서를 제출하세요. 인프라팀 승인 즉시 프로비저닝됩니다.'}
@@ -214,7 +214,7 @@ export default function ResourceRequestsPage() {
           {role === 'DEV_TEAM' && (
             <Button
               onClick={() => setIsCreateModalOpen(true)}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 font-medium gap-2 shrink-0"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-medium gap-2 shrink-0 shadow-sm"
             >
               <PlusCircle className="w-4 h-4" />
               신규 자원 요청서 작성
@@ -224,36 +224,36 @@ export default function ResourceRequestsPage() {
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 flex items-center justify-between shadow-sm">
             <div>
-              <div className="text-xs text-slate-400">전체 요청 건수</div>
-              <div className="text-2xl font-bold font-mono text-slate-100 mt-1">{stats.total}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">전체 요청 건수</div>
+              <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1">{stats.total}</div>
             </div>
-            <Server className="w-6 h-6 text-slate-600" />
+            <Server className="w-6 h-6 text-slate-400 dark:text-slate-600" />
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 flex items-center justify-between shadow-sm">
             <div>
-              <div className="text-xs text-slate-400 font-medium text-amber-400/90">⏳ 승인요청 대기</div>
-              <div className="text-2xl font-bold font-mono text-amber-400 mt-1">{stats.pending}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium text-amber-600 dark:text-amber-400/90">⏳ 승인요청 대기</div>
+              <div className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-1">{stats.pending}</div>
             </div>
             <Clock className="w-6 h-6 text-amber-500/70" />
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 flex items-center justify-between shadow-sm">
             <div>
-              <div className="text-xs text-slate-400 font-medium text-emerald-400/90">✅ 완전 승인 (배포 완료)</div>
-              <div className="text-2xl font-bold font-mono text-slate-100 mt-1">{stats.approved}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium text-emerald-600 dark:text-emerald-400/90">✅ 완전 승인 (배포 완료)</div>
+              <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1">{stats.approved}</div>
             </div>
             <CheckCircle2 className="w-6 h-6 text-emerald-500/70" />
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 flex items-center justify-between shadow-sm">
             <div>
-              <div className="text-xs text-slate-400">반려됨</div>
-              <div className="text-2xl font-bold font-mono text-slate-100 mt-1">{stats.rejected}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">반려됨</div>
+              <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1">{stats.rejected}</div>
             </div>
-            <XCircle className="w-6 h-6 text-slate-500" />
+            <XCircle className="w-6 h-6 text-slate-400 dark:text-slate-500" />
           </div>
         </div>
 
@@ -261,7 +261,7 @@ export default function ResourceRequestsPage() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
           {/* Status Tabs & My Requests Filter */}
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <div className="flex items-center gap-1 bg-slate-900/80 border border-slate-800 p-1 rounded-xl">
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-1 rounded-xl shadow-sm">
               {[
                 { id: 'ALL', label: '전체' },
                 { id: 'PENDING', label: '⏳ 승인요청 대기' },
@@ -273,8 +273,8 @@ export default function ResourceRequestsPage() {
                   onClick={() => setStatusFilter(tab.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     statusFilter === tab.id
-                      ? 'bg-slate-800 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm font-semibold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
                   {tab.label}
@@ -289,13 +289,13 @@ export default function ResourceRequestsPage() {
                 onClick={() => setOnlyMyRequests(!onlyMyRequests)}
                 className={`h-9 px-3 text-xs gap-1.5 rounded-xl border transition-all ${
                   onlyMyRequests
-                    ? 'bg-blue-950/80 border-blue-600/80 text-blue-300 font-medium'
-                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
+                    ? 'bg-blue-50 dark:bg-blue-950/80 border-blue-400 dark:border-blue-600/80 text-blue-700 dark:text-blue-300 font-medium'
+                    : 'bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
                 <User className="w-3.5 h-3.5" />
                 <span>내 요청만 보기 ({requesterName || '김개발'})</span>
-                {onlyMyRequests && <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                {onlyMyRequests && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
               </Button>
             )}
           </div>
@@ -306,7 +306,7 @@ export default function ResourceRequestsPage() {
               placeholder="티켓번호, 제목, 신청자 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-900/80 border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 h-9"
+              className="bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 h-9"
             />
           </div>
         </div>
@@ -315,19 +315,19 @@ export default function ResourceRequestsPage() {
         <div className="space-y-3">
           {loading && requests.length === 0 ? (
             <div className="p-12 text-center text-slate-500 text-sm">
-              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-400" />
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-500" />
               자원 요청 목록을 불러오는 중...
             </div>
           ) : filteredRequests.length === 0 ? (
-            <div className="p-12 text-center border border-slate-800/80 rounded-2xl bg-slate-900/40 text-slate-500 text-sm space-y-2">
-              <ClipboardCheck className="w-8 h-8 mx-auto text-slate-600" />
+            <div className="p-12 text-center border border-slate-200 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900/40 text-slate-500 text-sm space-y-2">
+              <ClipboardCheck className="w-8 h-8 mx-auto text-slate-400 dark:text-slate-600" />
               <div>해당하는 자원 요청 티켓이 없습니다.</div>
               {role === 'DEV_TEAM' && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="text-xs text-emerald-400 border-emerald-800/60 hover:bg-emerald-950/30 mt-2"
+                  className="text-xs text-blue-600 dark:text-emerald-400 border-blue-300 dark:border-emerald-800/60 hover:bg-blue-50 dark:hover:bg-emerald-950/30 mt-2"
                 >
                   새로운 자원 요청서 작성하기
                 </Button>
@@ -344,86 +344,86 @@ export default function ResourceRequestsPage() {
                   key={req.id}
                   className={`p-5 rounded-xl border transition-all ${
                     isPending
-                      ? 'bg-slate-900/70 border-amber-800/40 hover:border-amber-700/60 shadow-lg shadow-amber-950/10'
+                      ? 'bg-white dark:bg-slate-900/70 border-amber-300 dark:border-amber-800/40 hover:border-amber-400 dark:hover:border-amber-700/60 shadow-md shadow-amber-500/5'
                       : isProvisioned
-                      ? 'bg-slate-900/50 border-emerald-800/30 hover:border-emerald-700/50'
-                      : 'bg-slate-900/30 border-rose-900/30'
+                      ? 'bg-white dark:bg-slate-900/50 border-emerald-300 dark:border-emerald-800/30 hover:border-emerald-400 dark:hover:border-emerald-700/50 shadow-sm'
+                      : 'bg-white dark:bg-slate-900/30 border-rose-300 dark:border-rose-900/30 shadow-sm'
                   }`}
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     {/* Left: Info & Specs */}
                     <div className="space-y-2 flex-1 min-w-0">
                       <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="font-mono text-xs font-bold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded">
+                        <span className="font-mono text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded">
                           {req.id}
                         </span>
 
-                        <h3 className="font-semibold text-slate-100 text-sm truncate">
+                        <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate">
                           {req.title}
                         </h3>
 
                         {isPending && (
-                          <Badge variant="warning" className="gap-1.5 text-[11px] py-0.5 px-2 bg-amber-500/10 text-amber-300 border-amber-500/40 font-semibold shadow-sm">
-                            <Clock className="w-3 h-3 animate-spin text-amber-400" />
+                          <Badge variant="warning" className="gap-1.5 text-[11px] py-0.5 px-2 bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/40 font-semibold shadow-sm">
+                            <Clock className="w-3 h-3 animate-spin text-amber-500" />
                             <span>⏳ 승인요청 대기 중</span>
                           </Badge>
                         )}
                         {isProvisioned && (
-                          <Badge variant="success" className="gap-1.5 text-[11px] py-0.5 px-2 bg-emerald-500/10 text-emerald-300 border-emerald-500/40 font-semibold shadow-sm">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          <Badge variant="success" className="gap-1.5 text-[11px] py-0.5 px-2 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 font-semibold shadow-sm">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                             <span>✅ 완전 승인 (배포 완료)</span>
                           </Badge>
                         )}
                         {isRejected && (
-                          <Badge variant="destructive" className="gap-1.5 text-[11px] py-0.5 px-2 bg-rose-500/10 text-rose-300 border-rose-500/40 font-semibold shadow-sm">
-                            <XCircle className="w-3 h-3 text-rose-400" />
+                          <Badge variant="destructive" className="gap-1.5 text-[11px] py-0.5 px-2 bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/40 font-semibold shadow-sm">
+                            <XCircle className="w-3 h-3 text-rose-500" />
                             <span>❌ 반려됨</span>
                           </Badge>
                         )}
 
-                        <span className="text-[11px] text-slate-500 font-mono">
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
                           {new Date(req.createdAt).toLocaleString('ko-KR')}
                         </span>
                       </div>
 
                       {/* Requester and Spec Chips */}
-                      <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
-                        <span className="flex items-center gap-1 text-slate-300">
-                          <User className="w-3.5 h-3.5 text-slate-500" />
+                      <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                        <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
+                          <User className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                           {req.requesterName}
                         </span>
-                        <span className="flex items-center gap-1 text-slate-400">
-                          <Building className="w-3.5 h-3.5 text-slate-500" />
+                        <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                          <Building className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                           {req.department}
                         </span>
 
-                        <span className="text-slate-600">•</span>
+                        <span className="text-slate-300 dark:text-slate-600">•</span>
 
                         {req.spec.cores && (
-                          <span className="flex items-center gap-1 font-mono text-slate-300 bg-slate-800/50 px-2 py-0.5 rounded">
-                            <Cpu className="w-3 h-3 text-emerald-400" />
+                          <span className="flex items-center gap-1 font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded">
+                            <Cpu className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                             {req.spec.cores} Cores
                           </span>
                         )}
                         {req.spec.memory && (
-                          <span className="flex items-center gap-1 font-mono text-slate-300 bg-slate-800/50 px-2 py-0.5 rounded">
-                            <MemoryStick className="w-3 h-3 text-teal-400" />
+                          <span className="flex items-center gap-1 font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded">
+                            <MemoryStick className="w-3 h-3 text-teal-600 dark:text-teal-400" />
                             {req.spec.memory >= 1024
                               ? `${Math.round(req.spec.memory / 1024)} GB RAM`
                               : `${req.spec.memory} MB`}
                           </span>
                         )}
                         {req.spec.disk && (
-                          <span className="flex items-center gap-1 font-mono text-slate-300 bg-slate-800/50 px-2 py-0.5 rounded">
-                            <HardDrive className="w-3 h-3 text-cyan-400" />
+                          <span className="flex items-center gap-1 font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded">
+                            <HardDrive className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
                             {req.spec.disk} GB Disk
                           </span>
                         )}
                       </div>
 
                       {/* Reason */}
-                      <p className="text-xs text-slate-400 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/60 leading-relaxed">
-                        <strong className="text-slate-300 font-medium">신청 사유: </strong>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800/60 leading-relaxed">
+                        <strong className="text-slate-800 dark:text-slate-300 font-medium">신청 사유: </strong>
                         {req.reason}
                       </p>
 

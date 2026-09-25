@@ -9,12 +9,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isLoginPage = pathname === '/login';
 
   if (isLoginPage) {
-    return <div className="w-full min-h-screen bg-[#070b13]">{children}</div>;
+    return <div className="w-full min-h-screen bg-slate-50 dark:bg-[#070b13] text-slate-900 dark:text-slate-100">{children}</div>;
   }
 
   return (
     <AuthGuard>
-      <div className="flex w-full h-screen overflow-hidden bg-[#070b13]">
+      <div className="flex w-full h-screen overflow-hidden bg-slate-50 dark:bg-[#070b13] text-slate-900 dark:text-slate-100 transition-colors duration-200">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
           {children}
