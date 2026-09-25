@@ -202,7 +202,7 @@ const fixedEdges: CanvasEdge[] = [
     id: 'e-safety-tool',
     from: 'safety_check',
     to: 'tool_executor',
-    label: '안전 승인',
+    label: '가드레일 통과 (Safe)',
     condition: '!confirmationNeeded',
     color: '#a855f7',
   },
@@ -210,7 +210,7 @@ const fixedEdges: CanvasEdge[] = [
     id: 'e-safety-synth-interrupted',
     from: 'safety_check',
     to: 'synthesizer',
-    label: '승인 요청 대기',
+    label: '고위험 차단 (HITL 대기)',
     condition: 'confirmationNeeded',
     color: '#f43f5e',
     dashed: true,
@@ -759,7 +759,13 @@ export function LangGraphCanvas({
         if (node.id === 'tool_executor' && exec?.activeTool) {
           ctx.font = 'bold 9px monospace';
           ctx.fillStyle = '#f0abfc';
-          ctx.fillText(`⚡ ${exec.activeTool}()`, node.x + 24, node.y + 39);
+          let toolLabel = `⚡ ${exec.activeTool}()`;
+          if (exec.activeTool === 'create_resource_request') {
+            toolLabel = '⚡ create_req() [승인요청 접수]';
+          } else if (exec.activeTool === 'review_resource_request') {
+            toolLabel = '⚡ review_req() [완전 승인]';
+          }
+          ctx.fillText(toolLabel, node.x + 24, node.y + 39);
         } else if (node.id === 'router' && exec?.intent && exec.intent !== 'llm_not_connected') {
           ctx.font = 'bold 8.5px monospace';
           ctx.fillStyle = '#7dd3fc';

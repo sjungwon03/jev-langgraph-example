@@ -771,9 +771,25 @@ export function ChatConsole() {
                             </div>
                             <div className="flex items-center gap-1.5 text-[10px]">
                               {tc.output ? (
-                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-emerald-400 border-emerald-800/80 bg-emerald-950/40">
-                                  ✓ 실행 완료
-                                </Badge>
+                                tc.tool === 'create_resource_request' ? (
+                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-amber-300 border-amber-800/80 bg-amber-950/50 flex items-center gap-1 font-semibold">
+                                    <Clock className="w-2.5 h-2.5 text-amber-400" />
+                                    <span>⏳ 승인요청 대기 접수 (PENDING)</span>
+                                  </Badge>
+                                ) : tc.tool === 'review_resource_request' ? (
+                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-emerald-300 border-emerald-800/80 bg-emerald-950/50 flex items-center gap-1 font-semibold">
+                                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                                    <span>✅ 완전 승인 완료</span>
+                                  </Badge>
+                                ) : tc.tool === 'list_resource_requests' ? (
+                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-blue-300 border-blue-800/80 bg-blue-950/50 flex items-center gap-1 font-semibold">
+                                    <span>✓ 목록 조회 완료</span>
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-emerald-400 border-emerald-800/80 bg-emerald-950/40">
+                                    ✓ 실행 완료
+                                  </Badge>
+                                )
                               ) : (
                                 <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-amber-400 border-amber-800/80 bg-amber-950/40 animate-pulse">
                                   실행 중...

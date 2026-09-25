@@ -234,7 +234,7 @@ export default function ResourceRequestsPage() {
 
           <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80 flex items-center justify-between">
             <div>
-              <div className="text-xs text-slate-400">승인 심사 대기</div>
+              <div className="text-xs text-slate-400 font-medium text-amber-400/90">⏳ 승인요청 대기</div>
               <div className="text-2xl font-bold font-mono text-amber-400 mt-1">{stats.pending}</div>
             </div>
             <Clock className="w-6 h-6 text-amber-500/70" />
@@ -242,7 +242,7 @@ export default function ResourceRequestsPage() {
 
           <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/80 flex items-center justify-between">
             <div>
-              <div className="text-xs text-slate-400">승인 및 프로비저닝</div>
+              <div className="text-xs text-slate-400 font-medium text-emerald-400/90">✅ 완전 승인 (배포 완료)</div>
               <div className="text-2xl font-bold font-mono text-slate-100 mt-1">{stats.approved}</div>
             </div>
             <CheckCircle2 className="w-6 h-6 text-emerald-500/70" />
@@ -264,8 +264,8 @@ export default function ResourceRequestsPage() {
             <div className="flex items-center gap-1 bg-slate-900/80 border border-slate-800 p-1 rounded-xl">
               {[
                 { id: 'ALL', label: '전체' },
-                { id: 'PENDING', label: '대기 중' },
-                { id: 'PROVISIONED', label: '프로비저닝 완료' },
+                { id: 'PENDING', label: '⏳ 승인요청 대기' },
+                { id: 'PROVISIONED', label: '✅ 완전 승인' },
                 { id: 'REJECTED', label: '반려' },
               ].map((tab) => (
                 <button
@@ -363,18 +363,21 @@ export default function ResourceRequestsPage() {
                         </h3>
 
                         {isPending && (
-                          <Badge variant="warning" className="gap-1 text-[10px] py-0.5">
-                            <Clock className="w-3 h-3 animate-spin" /> 승인 대기
+                          <Badge variant="warning" className="gap-1.5 text-[11px] py-0.5 px-2 bg-amber-500/10 text-amber-300 border-amber-500/40 font-semibold shadow-sm">
+                            <Clock className="w-3 h-3 animate-spin text-amber-400" />
+                            <span>⏳ 승인요청 대기 중</span>
                           </Badge>
                         )}
                         {isProvisioned && (
-                          <Badge variant="success" className="gap-1 text-[10px] py-0.5">
-                            <CheckCircle2 className="w-3 h-3" /> 프로비저닝 완료
+                          <Badge variant="success" className="gap-1.5 text-[11px] py-0.5 px-2 bg-emerald-500/10 text-emerald-300 border-emerald-500/40 font-semibold shadow-sm">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            <span>✅ 완전 승인 (배포 완료)</span>
                           </Badge>
                         )}
                         {isRejected && (
-                          <Badge variant="destructive" className="gap-1 text-[10px] py-0.5">
-                            <XCircle className="w-3 h-3" /> 반려됨
+                          <Badge variant="destructive" className="gap-1.5 text-[11px] py-0.5 px-2 bg-rose-500/10 text-rose-300 border-rose-500/40 font-semibold shadow-sm">
+                            <XCircle className="w-3 h-3 text-rose-400" />
+                            <span>❌ 반려됨</span>
                           </Badge>
                         )}
 

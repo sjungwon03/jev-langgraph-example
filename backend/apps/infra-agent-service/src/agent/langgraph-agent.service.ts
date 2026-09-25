@@ -423,11 +423,18 @@ export class LangGraphAgentService {
             }
           }
 
+          let why = parsed.decisionWhy || parsed.why || '사용자 의도 분석 완료';
+          if (toolToCall?.name === 'create_resource_request') {
+            why = '신규 자원 요청서 접수 (인프라팀 승인요청 대기 큐 등록)';
+          } else if (toolToCall?.name === 'review_resource_request') {
+            why = toolToCall.args?.status === 'APPROVED' ? '인프라팀 자원 요청 완전 승인 및 자동 배포' : '인프라팀 자원 요청 반려 처리';
+          } else if (toolToCall?.name === 'list_resource_requests') {
+            why = '사용자 자원 신청 내역 및 대기열 조회';
+          }
+
           const decision = {
             intent: toolToCall?.name === 'list_resource_requests' ? 'list_resource_requests' : parsed.intent,
-            decisionWhy: toolToCall?.name === 'list_resource_requests'
-              ? '사용자 자원 신청 내역 및 대기열 조회'
-              : (parsed.decisionWhy || parsed.why || '사용자 의도 분석 완료'),
+            decisionWhy: why,
             safetyEvaluation: parsed.safetyEvaluation || 'SAFE',
             toolToCall,
           };
@@ -549,9 +556,20 @@ export class LangGraphAgentService {
 - 만약 'list_resource_requests' 조회 결과인 경우:
   * 본인이 신청한 내역(또는 요청된 목록)만 필터링되어 전달되므로 해당 내역을 깔끔한 마크다운 표로 안내하세요.
   * 내역이 비어있거나 항목이 없다면: "${state.requesterName || '신청자'}님이 신청하신 자원 요청 내역이 없습니다."라고 친절히 안내하세요.
-  * 내역이 있다면: [요청 번호(ID), 제목, 유형, 신청자, 진행 상태(PENDING/APPROVED/REJECTED), 신청일]을 마크다운 표로 깔끔하게 정리해 보여주세요.
+  * 내역이 있다면: [요청 번호(ID), 제목, 유형, 신청자, 진행 상태, 신청일]을 마크다운 표로 정리하세요.
+  * 🚨 [진행 상태 표기 - 승인요청 대기 vs 완전 승인 절대 구분]:
+    - PENDING: 반드시 "⏳ 승인요청 대기 (인프라팀 검토 중)" 로 표기 (아직 배포되지 않음)
+    - PROVISIONED 또는 APPROVED: 반드시 "✅ 완전 승인 (배포 완료)" 로 표기
+    - REJECTED: 반드시 "❌ 반려됨" 으로 표기
+  * 표 하단에 각 요청이 '승인요청 대기' 상태인지 '완전 승인' 상태인지 한눈에 알 수 있도록 요약 코멘트를 추가하세요.
 - 만약 'create_resource_request' 생성 결과인 경우:
-  * 발급된 티켓 번호(REQ-XXXX), 신청 사유, 사양, 승인 대기 상태를 영수증 카드 마크다운 표로 요약해 주세요.
+  * 🚨 [승인 상태 절대 주의]: 지금 단계는 "승인요청 대기(PENDING)" 상태이며, 아직 "완전 승인"되지 않았음을 아주 명확히 명시하세요.
+  * 제목: "[개발팀 자원 요청서 접수 완료: REQ-XXXX (승인요청 대기 중)]"
+  * 진행 상태: "⏳ 승인요청 대기 중 (PENDING - 인프라팀 승인 필요)"
+  * 발급된 티켓 번호, 사유, 사양을 영수증 카드 마크다운 표로 요약하고, "⚠️ 인프라팀 엔지니어가 승인 큐에서 검토 후 '완전 승인'해야 Proxmox 가상머신이 실제로 배포됩니다."라는 안내를 굵게 강조하세요.
+- 만약 'review_resource_request' 검토 결과인 경우:
+  * status가 APPROVED인 경우: "✅ [인프라팀 완전 승인 및 자동 배포 완료]"임을 강조하고 할당된 VMID와 타겟 노드를 명확히 표시하세요.
+  * status가 REJECTED인 경우: "❌ [인프라팀 요청 반려]"와 반려 사유를 명시하세요.
 - 오류가 발생했다면 원인과 해결 방안을 명확히 안내하세요.
 ${toolInfo}`;
 
@@ -812,8 +830,8 @@ ${toolInfo}`;
         { from: 'jev_governance', to: 'router', label: '2. 툴 콜링 분석' },
         { from: 'router', to: 'safety_check', label: '도구 호출 필요', condition: 'toolToCall != null' },
         { from: 'router', to: 'synthesizer', label: '일반 질문 / 대화 우회', condition: 'toolToCall == null' },
-        { from: 'safety_check', to: 'synthesizer', label: '고위험 승인 대기', condition: 'confirmationNeeded != null' },
-        { from: 'safety_check', to: 'tool_executor', label: '안전 작업 승인 통과', condition: 'confirmationNeeded == null' },
+        { from: 'safety_check', to: 'synthesizer', label: '고위험 차단 (HITL 확인 대기)', condition: 'confirmationNeeded != null' },
+        { from: 'safety_check', to: 'tool_executor', label: '가드레일 통과 (안전)', condition: 'confirmationNeeded == null' },
         { from: 'tool_executor', to: 'synthesizer', label: '실행 결과 전달' },
         { from: 'synthesizer', to: '__end__', label: '최종 스트리밍 완료' },
       ],
