@@ -9,6 +9,7 @@
 | 문서 | 링크 | 내용 요약 |
 | :--- | :--- | :--- |
 | **시스템 아키텍처** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | MSA 토폴로지, LangGraph StateGraph 파이프라인, 포트 맵 |
+| **학습·면접 가이드** | [docs/INTERVIEW_STUDY_GUIDE.md](docs/INTERVIEW_STUDY_GUIDE.md) | 현재 코드 기준 컴포넌트, Jev 순환 그래프, 체크포인터, 실행 예시와 한계 |
 | **거버넌스 & 3중 가드레일** | [docs/GOVERNANCE_AND_GUARDRAILS.md](docs/GOVERNANCE_AND_GUARDRAILS.md) | 개발팀 vs 인프라팀 분리, HITL 승인 토큰, 다계층 방어선 |
 | **API 참조 명세서** | [docs/API_REFERENCE.md](docs/API_REFERENCE.md) | L7 Gateway, 자원 요청/승인, SSE 챗봇 스트림, 인프라 REST API |
 | **사용자 시나리오 가이드** | [docs/USER_SCENARIOS.md](docs/USER_SCENARIOS.md) | 자원 신청, 심사 및 자동 프로비저닝, 파괴적 작업 보안 승인 |
@@ -33,8 +34,8 @@ flowchart TB
         end
 
         subgraph ServiceLayer ["백엔드 마이크로서비스 계층"]
-            AgentService["infra-agent-service (:3010)<br/>🧠 JEV AI Brain & LangGraph StateGraph<br/>- Multi-Role Governance (개발팀 vs 인프라팀)<br/>- Safety Gate (Human-In-The-Loop 토큰 발급)<br/>- 자체 지능형 NLU 폴백 파서 (Offline 지원)<br/>- 실시간 SSE 스트리밍"]
-            InfraService["infra-service (:3020)<br/>⚡ JEV 인프라 코어 & 자원 요청 엔진<br/>- Proxmox MCP Client (Stdio/Mock)<br/>- 자원 요청 큐 & 심사 엔진 (/api/infra/requests)<br/>- ShedLock 자동화 & 분산 감사 로그"]
+            AgentService["infra-agent-service (:3010)<br/>LangGraph StateGraph<br/>- Jev Choice 기반 도구 선택<br/>- MemorySaver 승인 중단/재개<br/>- SSE 스트리밍"]
+            InfraService["infra-service (:3020)<br/>- Proxmox MCP stdio 또는 직접 REST<br/>- 자원 신청 접수/심사<br/>- 자동화 및 감사 로그"]
         end
 
         subgraph StorageLayer ["미들웨어 & 캐시 계층"]
@@ -108,7 +109,7 @@ graph LR
   - 전용 UI(`/requests`) 또는 AI 챗봇(*"2코어 4기가 램 20GB 디스크로 VM 하나 만들어줘"*)을 통해 **자원 신청 티켓(`REQ-XXXX`)**을 발급합니다.
 - **인프라팀 (INFRA_TEAM)**:
   - 개발팀의 대기 큐를 실시간 모니터링하고 노드 잔여 용량을 확인합니다.
-  - **"승인 및 자동 프로비저닝"** 클릭 시 Proxmox MCP를 호출하여 실제 클러스터에 VM 생성/디스크 확장을 즉시 실행하고 결과(`VMID`, `UPID`)를 영구 기록합니다.
+  - 자원 신청 승인 시 VM 생성 또는 디스크 확장을 시도하고 결과를 현재 프로세스 메모리에 기록합니다. 실패하면 `APPROVED` 상태로 남을 수 있습니다.
 
 ### 2. 3계층 심층 방어 가드레일 (3-Tier Deep Guardrails)
 - **Tier 1 (역할 거버넌스 가드)**: 개발팀의 인프라 직접 변경은 차단하고, 명시적인 자원 신청 요청만 승인 대기 티켓으로 접수.
@@ -132,6 +133,7 @@ graph LR
 jev-langgraph-example/
 ├── docs/                               # 상세 기술 문서 및 사용자 가이드
 │   ├── ARCHITECTURE.md                 # MSA 토폴로지, StateGraph, MCP 연동
+│   ├── INTERVIEW_STUDY_GUIDE.md        # 코드 기준 구조 설명, 면접 Q&A, 현재 한계
 │   ├── GOVERNANCE_AND_GUARDRAILS.md    # 다계층 가드레일 및 승인 라이프사이클
 │   ├── API_REFERENCE.md                # 전체 API 명세서 및 SSE 스트림 규격
 │   └── USER_SCENARIOS.md               # 주요 역할별 사용 시나리오
@@ -162,7 +164,7 @@ jev-langgraph-example/
 ```bash
 docker compose -f infra/docker-compose.yml up -d --build
 ```
-> **Proxmox 자격 증명이 없어도 즉시 구동됩니다!** 기본적으로 고정밀 시뮬레이션(High-Fidelity Mock) 엔진이 활성화되어 실제 Proxmox VE 8.2 클러스터 환경과 100% 동일하게 동작합니다.
+> Proxmox 연결 정보가 없으면 웹 서비스는 시작할 수 있지만 실제 클러스터 조회·변경은 실패합니다. 현재 `ProxmoxMcpClient.isSimulated()`는 `false`를 반환합니다.
 
 ### 2. 서비스 접속 주소
 
@@ -180,4 +182,4 @@ cd backend
 pnpm build
 npx tsx --tsconfig ./tsconfig.json --test test/backend.spec.ts
 ```
-> Actuator, Proxmox MCP Client, LangGraph Agent, Safety Gate, Resource Request Governance 등 14개 통합 테스트가 100% 통과합니다.
+> LangGraph 에이전트의 Jev 재판단, 도구 순환 제한, 승인·거절·만료 경로는 `backend/apps/infra-agent-service/src/agent/langgraph-agent.service.spec.ts`에서 mock 기반으로 검증합니다.

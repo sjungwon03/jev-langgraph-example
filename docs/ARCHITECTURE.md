@@ -1,5 +1,7 @@
 # 🏛️ JEV 시스템 아키텍처 명세서 (System Architecture)
 
+> 현재 구현을 기준으로 노드·엣지·컴포넌트·제약을 학습하려면 [학습 및 면접 가이드](INTERVIEW_STUDY_GUIDE.md)를 먼저 읽어 주세요. 아래의 일부 도표와 설명은 초기 설계 의도를 포함합니다.
+
 JEV(`jev-langgraph-example`)는 **NestJS 기반 마이크로서비스 아키텍처(MSA)**, **Theorvane/proxmox-mcp (Model Context Protocol)**, **LangGraph AI StateGraph**, **Next.js 15 프론트엔드 콘솔**을 결합하여 가상화 인프라를 자율 제어하고 팀 간 거버넌스를 보장하는 차세대 AI 인프라 플랫폼입니다.
 
 특히 **JEV(자율 인프라 오케스트레이션 프레임워크)**와 **LLM(외부 언어 모델 추론 엔진)**은 완전히 분리(Decoupled)되어 있어, LLM 모델 교체 시에도 인프라 제어 및 거버넌스 규칙이 영향받지 않는 모듈러 아키텍처를 자랑합니다.
@@ -22,8 +24,8 @@ flowchart TB
         end
 
         subgraph ServiceLayer ["백엔드 마이크로서비스 계층"]
-            AgentService["infra-agent-service (:3010)<br/>🧠 JEV AI Brain & LangGraph StateGraph<br/>- Multi-Role Governance (개발팀 vs 인프라팀)<br/>- Safety Gate (Human-In-The-Loop 토큰 발급)<br/>- 자체 지능형 NLU 폴백 파서 (Offline 지원)<br/>- 실시간 SSE 스트리밍"]
-            InfraService["infra-service (:3020)<br/>⚡ JEV 인프라 코어 & 자원 요청 엔진<br/>- Proxmox MCP Client (Stdio/Mock)<br/>- 자원 요청 큐 & 심사 엔진 (/api/infra/requests)<br/>- ShedLock 자동화 & 분산 감사 로그"]
+            AgentService["infra-agent-service (:3010)<br/>LangGraph 상태 그래프<br/>- Jev Choice 도구 선택<br/>- MemorySaver 승인 중단/재개<br/>- SSE 스트리밍"]
+            InfraService["infra-service (:3020)<br/>- Proxmox MCP stdio 또는 직접 REST<br/>- 자원 신청 접수/심사<br/>- 자동화 및 감사 로그"]
         end
 
         subgraph StorageLayer ["미들웨어 & 캐시 계층"]
@@ -73,9 +75,9 @@ graph TD
     subgraph JEV_Plane ["⚡ JEV Control Plane (jev-langgraph-example) - '도구 호출 & 가드레일 전담'"]
         direction TB
         JEV_Router["1. Jev Choice 질문으로 도구와 신청 유형 결정<br/>- 코드에서 인수 추출 및 검증"]
-        JEV_Guardrail["2. 3계층 심층 가드레일 (Deep Guardrails)<br/>- 역할 검증: DEV_TEAM은 승인 큐로 강제 격리<br/>- 위험 작업 차단: VM 삭제/강제종료 시 HITL 1회용 승인 토큰 발급"]
-        JEV_State["3. LangGraph 상태 머신 (StateGraph Engine)<br/>- router ➔ safety_check ➔ tool_executor ➔ synthesizer 전이 관리"]
-        JEV_Executor["4. Proxmox MCP Executor<br/>- HTTP RPC 원격 실행, ShedLock 분산 락, 감사 로그 영구 적재"]
+        JEV_Guardrail["2. 코드 기반 인수·역할 검사<br/>- 위험 작업은 HITL 승인 토큰 발급"]
+        JEV_State["3. LangGraph 상태 머신<br/>- tool_executor ➔ router 순환<br/>- 승인 시 MemorySaver 중단/재개"]
+        JEV_Executor["4. 원격 도구 실행<br/>- infra-service HTTP 호출"]
     end
 
     subgraph Proxmox_Plane ["🖥️ Proxmox VE 가상화 인프라"]
@@ -89,11 +91,12 @@ graph TD
     JEV_Guardrail -->|"4-A. 안전 및 승인 검증 통과"| JEV_Executor
     JEV_Guardrail -.->|"4-B. 위험 작업: 1회용 승인 토큰 발급"| User
     
-    JEV_Executor -->|"5. Stdio MCP 호출"| PVE
+    JEV_Executor -->|"5. MCP stdio 또는 직접 REST"| PVE
     PVE -->|"6. 인프라 실행 결과 반환"| JEV_Executor
     
     JEV_Executor -->|"7. 실행 결과 데이터 전달"| JEV_State
-    JEV_State -->|"8. 실행 컨텍스트와 도구 결과 전달"| LLM_Dialog
+    JEV_State -->|"8-A. 추가 작업이면 재판단"| JEV_Router
+    JEV_State -->|"8-B. 완료 시 결과 전달"| LLM_Dialog
     LLM_Dialog -->|"9. 최종 대화형 마크다운 응답 (SSE Stream)"| User
 
     classDef jev fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#fff;
@@ -109,9 +112,9 @@ graph TD
 | 구분 | ⚡ JEV 코어 제어 평면 (`jev-langgraph-example`) | 🤖 외부 LLM 인지/대화 평면 (External LLM) |
 | :--- | :--- | :--- |
 | **핵심 역할** | **툴 콜링(Tool Calling) & 가드레일(Guardrails) & 인프라 통제** | **실제 대화 처리(Conversational Dialog) & 응답 생성(Response Synthesis)** |
-| **주요 기능** | • LangGraph 기반 상태 전이 관리 (`StateGraph`)<br/>• **도구 결정 및 파라미터 유효성 검증 (Tool Calling)**<br/>• **역할 거버넌스 강제 (`DEV_TEAM`은 승인 큐로 격리)**<br/>• **파괴적 작업 차단 및 HITL 1회용 승인 토큰 라이프사이클**<br/>• Proxmox MCP 프로토콜 브릿지 및 원격 RPC 실행<br/>• 감사 로그(Audit Logs) 및 분산 락(ShedLock) 영구 적재<br/>• LLM 장애 시에도 100% 작동하는 내장 NLU 파서 보유 | • 비정형 자연어 발화의 문맥 및 사용자 의도 이해<br/>• 발화 내용으로부터 CPU/RAM/Disk 스펙 추론<br/>• **도구 실행 결과를 바탕으로 친절하고 자연스러운 한국어 대화 응답 생성**<br/>• 기술적 인프라 상태를 비전문가도 이해할 수 있는 설명문으로 변환<br/>• 다음 권장 행동에 대한 대화형 안내 |
-| **결합도 & 의존성** | **완전 분리(Decoupled)**: LLM이 다운되거나 오프라인이어도 JEV 내부 룰 엔진으로 인프라 제어 완전 보장 | **교체 가능(Pluggable)**: OpenAI API, Azure OpenAI, 온프레미스 Local LLM (Ollama, vLLM) 등으로 자유 교체 가능 |
-| **보안 & 안정성** | **결정론적(Deterministic) 보장**: LLM의 환각(Hallucination)에 의한 무단 인프라 조작을 코드 레벨 가드레일로 원천 차단 | 프롬프트 컨텍스트에 기반하여 최적의 대화 톤앤매너 및 요약 유지 |
+| **주요 기능** | • Jev Choice로 다음 도구 선택<br/>• 코드로 확률·역할·인수 검사<br/>• LangGraph 순환과 승인 중단/재개<br/>• 인프라 서비스 HTTP 호출 | • 누적 도구 결과를 사용자용 한국어 답변으로 정리 |
+| **장애 시 동작** | Jev 연결 실패 시 새 도구 선택을 진행하지 않음. LLM 연결 실패 시 기본 결과 형식으로 응답 | LLM은 도구 선택·권한 검사·승인 판단에 참여하지 않음 |
+| **현재 제한** | 요청의 역할은 클라이언트 입력이며 체크포인트·티켓·감사 로그는 메모리 기반 | 코드가 사전 응답을 정한 거절/확인 경로에서는 LLM을 호출하지 않음 |
 
 ---
 
@@ -243,4 +246,4 @@ AI 에이전트와 실제 인프라 제어 계층의 책임을 분리하여 높�
 2. **인프라 코어 계층 (`infra-service`)**:
    - `ProxmoxMcpClient`를 보유하여 Theorvane/proxmox-mcp의 Stdio 프로세스를 직접 관리합니다.
    - `POST /api/infra/tools/execute` 엔드포인트를 통해 에이전트의 원격 툴 호출을 안전하게 수신하고 검증합니다.
-   - 실제 자격 증명이 없는 개발 환경을 위해 **초고정밀 시뮬레이션(High-Fidelity Mock) 엔진**을 기본 내장하여 즉각적인 검증이 가능합니다.
+   - 현재 코드는 기본 모의 엔진을 사용하지 않습니다. Proxmox 연결 정보가 없으면 실제 클러스터 작업이 실패하며, 테스트에서는 원격 클라이언트를 mock합니다.
