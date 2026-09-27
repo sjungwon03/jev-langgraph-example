@@ -364,11 +364,11 @@ export function ChatConsole() {
               } else if (chunk.type === 'tool_end') {
                 setExecutionState((prev) => ({
                   ...prev,
-                  activeNodeId: 'synthesizer',
-                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'synthesizer'])),
-                  isLlmActive: true,
-                  isJevActive: false,
-                  statusMessage: '실행 결과 수신: 🤖 LLM 최종 대화 응답 합성 중...',
+                  activeNodeId: 'router',
+                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'router'])),
+                  isLlmActive: false,
+                  isJevActive: true,
+                  statusMessage: '실행 결과 수신: ⚡ JEV가 다음 작업 또는 종료를 판단 중...',
                 }));
               } else if (chunk.type === 'done') {
                 setExecutionState((prev) => ({
@@ -411,7 +411,7 @@ export function ChatConsole() {
                     );
                     return {
                       ...msg,
-                      thought: '결과 종합 중...',
+                      thought: 'JEV가 실행 결과를 검토 중...',
                       toolCalls: updated,
                     };
                   }

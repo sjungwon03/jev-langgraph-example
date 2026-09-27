@@ -334,7 +334,7 @@ export function LangGraphVisualizerContent({
                   <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">intent</span>
                   <Badge variant="outline" className="text-[10px] font-mono">string</Badge>
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">LLM이 분류한 최종 작업 의도 식별자</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">JEV가 선택한 현재 작업 의도 식별자</p>
               </div>
 
               <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm space-y-1">
@@ -359,6 +359,14 @@ export function LangGraphVisualizerContent({
                   <Badge variant="outline" className="text-[10px] font-mono">any</Badge>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">Proxmox MCP 또는 자원 신청/승인 실행 결과 JSON</p>
+              </div>
+
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">toolHistory</span>
+                  <Badge variant="outline" className="text-[10px] font-mono">ToolExecution[]</Badge>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">누적 실행 이력 (reducer: concat). JEV의 재판단 입력</p>
               </div>
 
               <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm space-y-1">

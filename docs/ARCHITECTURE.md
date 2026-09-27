@@ -166,11 +166,12 @@ sequenceDiagram
 
 ## 5. LangGraph AI 상태 머신 (StateGraph Workflow)
 
-`infra-agent-service`는 LangGraph의 `StateGraph`를 통해 사용자의 요청을 4단계 파이프라인으로 엄격히 통제합니다:
+`infra-agent-service`는 LangGraph의 `StateGraph`에서 도구 결과를 상태에 누적하고 JEV 라우터로 되돌리는 순환 워크플로를 실행합니다. JEV가 매번 다음 도구 또는 종료를 선택하며, LLM은 마지막 사용자 응답에만 사용합니다.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> router: 사용자 메시지 수신 (role, text)
+    [*] --> jev_governance: 사용자 메시지 수신 (role, text)
+    jev_governance --> router: 요청 컨텍스트 바인딩
     
     state router {
         direction TB
@@ -180,7 +181,7 @@ stateDiagram-v2
     }
 
     router --> safety_check: 도구 호출 필요 (toolToCall != null)
-    router --> synthesizer: 단순 질의응답 (toolToCall == null)
+    router --> synthesizer: 일반 대화 / 작업 완료 / 실행 제한
 
     state safety_check {
         direction TB
@@ -197,7 +198,7 @@ stateDiagram-v2
         AuditRecord: 실행 감사 로그 기록
     }
 
-    tool_executor --> synthesizer: 실행 결과 전달
+    tool_executor --> router: toolHistory 누적 후 JEV 재판단
 
     state synthesizer {
         direction TB
@@ -209,16 +210,19 @@ stateDiagram-v2
 ```
 
 ### 상태 채널 정의 (`InfraAgentState`)
-- `messages`: 대화 히스토리 (BaseMessage 배열)
+- `messages`: 현재 요청의 메시지 (BaseMessage 배열)
 - `role`: 활성 사용자 역할 (`DEV_TEAM` | `INFRA_TEAM`)
 - `requesterName`: 요청자 성명/식별자
 - `intent`: 분류된 의도 (`create_resource_request`, `review_resource_request`, `qemu_start` 등)
 - `toolToCall`: 호출할 도구명과 바인딩된 JSON 인수
 - `toolResult`: 원격 실행 결과
+- `toolHistory`: 이 그래프 실행에서 완료된 도구명, 인수, 결과의 누적 이력
 - `confirmationNeeded`: 파괴적 작업 차단 시 발급된 승인 토큰 정보
 - `decisionWhy`: AI가 이 도구와 인수를 선택한 구체적 추론 근거
 - `safetyEvaluation`: 안전성 평가 등급 (`SAFE`, `GOVERNANCE`, `CAUTION`)
 - `finalResponse`: 최종 마크다운 응답
+
+라우터는 JEV Choice로 다음 작업을 고릅니다. 실행한 도구의 결과가 `toolHistory`에 쌓이면 같은 라우터가 결과를 검토합니다. `finish`가 선택되거나 더 필요한 작업이 없으면 응답 노드로 이동합니다. 동일 도구 재실행, 도구 오류 후 추가 실행, 3회 초과 실행은 코드에서 차단합니다. 파괴적 작업은 승인 토큰을 발급하고 이번 실행을 종료하며, 승인 API에서 별도로 실행됩니다. 체크포인터를 통한 그래프 내부 중단/재개는 구현되어 있지 않습니다.
 
 ---
 

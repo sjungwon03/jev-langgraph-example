@@ -21,6 +21,14 @@ export interface PendingConfirmation {
   expiresAt: number; // timestamp
 }
 
+interface ToolExecution {
+  name: string;
+  args: Record<string, any>;
+  result: any;
+}
+
+const MAX_TOOL_STEPS = 3;
+
 import { resolveJevAuthConfig, createJevFetch, JevClient, JevAuthConfig } from '@nest-msa/common';
 
 // LangGraph State Annotation
@@ -40,6 +48,10 @@ export const InfraAgentState = Annotation.Root({
   toolResult: Annotation<any>({
     reducer: (x, y) => y,
     default: () => null,
+  }),
+  toolHistory: Annotation<ToolExecution[]>({
+    reducer: (x, y) => x.concat(y),
+    default: () => [],
   }),
   confirmationNeeded: Annotation<PendingConfirmation | null>({
     reducer: (x, y) => y,
@@ -135,7 +147,7 @@ export class LangGraphAgentService {
       this.logger.warn('LLM API key not provided. JEV routing remains available; conversational responses use a deterministic fallback.');
     }
 
-    // 2. Build LangGraph StateGraph (JEV Core Platform Entry -> Router & LLM -> Safety Gate -> Tool -> Synthesizer)
+    // JEV reviews each result through the router before another tool or the final response.
     const workflow = new StateGraph(InfraAgentState)
       .addNode('jev_governance', async (state) => this.jevGovernanceNode(state))
       .addNode('router', async (state) => this.routerNode(state))
@@ -152,7 +164,7 @@ export class LangGraphAgentService {
         if (state.confirmationNeeded) return 'synthesizer'; // Interrupted for confirmation
         return 'tool_executor';
       })
-      .addEdge('tool_executor', 'synthesizer')
+      .addEdge('tool_executor', 'router')
       .addEdge('synthesizer', END);
 
     this.appGraph = workflow.compile();
@@ -243,10 +255,13 @@ export class LangGraphAgentService {
 
   /** JEV selects among fixed actions. Code extracts and checks all execution arguments. */
   private async routerNode(state: typeof InfraAgentState.State) {
-    const lastMsg = state.messages[state.messages.length - 1];
-    const text = typeof lastMsg?.content === 'string' ? lastMsg.content.trim() : '';
+    const userMsg = state.messages.find((message) => message instanceof HumanMessage);
+    const text = typeof userMsg?.content === 'string' ? userMsg.content.trim() : '';
     const requester = state.requesterName || '김개발';
     if (!text) return { intent: 'chat', toolToCall: null, decisionWhy: '빈 요청', safetyEvaluation: 'SAFE' };
+    if (state.toolHistory.length >= MAX_TOOL_STEPS) {
+      return { intent: 'complete', toolToCall: null, decisionWhy: `최대 도구 실행 횟수 ${MAX_TOOL_STEPS}회 도달`, safetyEvaluation: 'SAFE' };
+    }
     if (this.jevAuthConfig.authType === 'bearer' && !this.jevAuthConfig.token ||
         this.jevAuthConfig.authType === 'basic' && !this.jevAuthConfig.token && !(this.jevAuthConfig.username && this.jevAuthConfig.password)) {
       return { intent: 'jev_not_connected', toolToCall: null, decisionWhy: 'JEV 인증 미설정', safetyEvaluation: 'SAFE', finalResponse: this.getSystemConnectionGuideMessage() };
@@ -254,6 +269,7 @@ export class LangGraphAgentService {
 
     const choices: Record<string, string> = {
       chat: '인사, 일반 질문, 설명 요청. 인프라 데이터 조회나 변경은 하지 않는다.',
+      finish: '이미 실행한 도구 결과로 사용자 요청에 답할 수 있거나 더 이상 필요한 작업이 없다. 도구 실행 이후에만 선택한다.',
       list_nodes: 'Proxmox 노드 목록과 상태를 조회한다.',
       cluster_resources: '클러스터 VM 또는 컨테이너 목록과 상태를 조회한다.',
       list_resource_requests: '이미 제출한 자원 신청 티켓의 목록, 상태 또는 이력을 조회한다. 신규 신청이 아니다.',
@@ -273,9 +289,16 @@ export class LangGraphAgentService {
       const result = await this.jevClient.decide<{
         answers?: Record<string, { choice?: string; confidence?: number; probabilities?: Record<string, number> }>;
       }>(
-        { message: text, role: state.role, requester },
         {
-          action: { type: 'choice', instructions: 'Which single action does `message` request now? Distinguish an existing request status inquiry from a new submission. Choose chat if no listed infrastructure action applies.', criteria: choices },
+          message: text,
+          role: state.role,
+          requester,
+          completedTools: state.toolHistory.map(({ name, args, result }) => ({
+            name, args, result: JSON.stringify(result)?.slice(0, 3000),
+          })),
+        },
+        {
+          action: { type: 'choice', instructions: 'Choose the NEXT action needed for `message`, considering completedTools and their results. Choose finish when all requested work is done or the latest tool failed. Never repeat a completed action. On the first pass, choose chat for ordinary conversation; do not choose finish.', criteria: choices },
           requestType: { type: 'choice', instructions: 'If `message` asks for a new resource request, which type is it?', criteria: { CREATE_VM: 'Create or provision a new VM or container', RESIZE_DISK: 'Expand disk capacity', DELETE_VM: 'Request VM deletion', none: 'No new resource request type is specified' } },
           reviewStatus: { type: 'choice', instructions: 'If `message` reviews an existing request, is it approving or rejecting?', criteria: { APPROVED: 'Approve the request', REJECTED: 'Reject the request', none: 'No review decision' } },
           workload: { type: 'choice', instructions: 'For a new VM request, which workload best matches `message`?', criteria: { web: 'Web application or API', database: 'Database server', ai: 'AI or ML workload', cache: 'Cache such as Redis', general: 'General purpose or unspecified' } },
@@ -286,7 +309,20 @@ export class LangGraphAgentService {
       const name = answer?.choice;
       if (!name || !Object.prototype.hasOwnProperty.call(choices, name)) throw new Error('JEV가 유효한 작업을 반환하지 않았습니다.');
       const probability = answer.probabilities?.[name] ?? answer.confidence ?? 0;
+      if (state.toolHistory.length && (name === 'finish' || name === 'chat')) {
+        return { intent: 'complete', toolToCall: null, decisionWhy: 'JEV가 도구 결과 검토 후 종료 선택', safetyEvaluation: 'SAFE' };
+      }
+      if (!state.toolHistory.length && name === 'finish') {
+        return { intent: 'clarification', toolToCall: null, decisionWhy: '실행 전 종료 선택', safetyEvaluation: 'CAUTION', finalResponse: '요청하신 작업을 분명히 파악하지 못했습니다. 작업과 대상을 구체적으로 알려주세요.' };
+      }
+      if (state.toolHistory.some((item) => item.result?.error)) {
+        return { intent: 'complete', toolToCall: null, decisionWhy: '도구 오류로 후속 실행 중단', safetyEvaluation: 'CAUTION' };
+      }
+      if (state.toolHistory.some((item) => item.name === name)) {
+        return { intent: 'complete', toolToCall: null, decisionWhy: '이미 실행한 도구의 중복 실행 차단', safetyEvaluation: 'CAUTION' };
+      }
       if (name !== 'chat' && probability < 0.65) {
+        if (state.toolHistory.length) return { intent: 'complete', toolToCall: null, decisionWhy: '후속 작업 선택 확률이 낮아 종료', safetyEvaluation: 'CAUTION' };
         return { intent: 'clarification', toolToCall: null, decisionWhy: 'JEV 작업 선택 확률이 낮음', safetyEvaluation: 'CAUTION', finalResponse: '요청하신 작업을 확실히 구분하지 못했습니다. 조회 또는 변경할 작업과 대상을 구체적으로 알려주세요.' };
       }
       if (name === 'chat') return { intent: 'chat', toolToCall: null, decisionWhy: 'JEV 일반 대화 분류', safetyEvaluation: 'SAFE' };
@@ -360,6 +396,9 @@ export class LangGraphAgentService {
       return { intent: name, toolToCall: { name, args }, decisionWhy: `JEV 선택: ${name} (확률 ${probability.toFixed(2)})`, safetyEvaluation: this.isDestructiveAction(name) ? 'CAUTION' : 'SAFE' };
     } catch (err: any) {
       this.logger.error(`JEV decision failed: ${err.message}`);
+      if (state.toolHistory.length) {
+        return { intent: 'complete', toolToCall: null, decisionWhy: 'JEV 후속 판단 실패로 추가 실행 중단', safetyEvaluation: 'CAUTION' };
+      }
       return { intent: 'jev_error', toolToCall: null, decisionWhy: 'JEV 호출 실패', safetyEvaluation: 'CAUTION', finalResponse: 'JEV 의사결정 서비스에 연결하지 못했습니다. 연결 설정을 확인한 뒤 다시 시도해 주세요.' };
     }
   }
@@ -418,10 +457,11 @@ export class LangGraphAgentService {
       } else {
         result = await this.remoteClient.executeTool(tool.name, tool.args);
       }
-      return { toolResult: result };
+      return { toolResult: result, toolHistory: [{ name: tool.name, args: tool.args, result }] };
     } catch (err: any) {
       this.logger.error(`Error executing tool ${tool.name}: ${err.message}`);
-      return { toolResult: { error: err.message } };
+      const result = { error: err.message };
+      return { toolResult: result, toolHistory: [{ name: tool.name, args: tool.args, result }] };
     }
   }
 
@@ -452,8 +492,8 @@ export class LangGraphAgentService {
       try {
         const lastMsg = state.messages[state.messages.length - 1];
         const userPrompt = typeof lastMsg?.content === 'string' ? lastMsg.content : '';
-        const toolInfo = state.toolToCall
-          ? `[Proxmox 도구 실행 내역]\n- 도구명: ${state.toolToCall.name}\n- 입력 인수: ${JSON.stringify(state.toolToCall.args)}\n- 실행 결과: ${JSON.stringify(state.toolResult)}`
+        const toolInfo = state.toolHistory.length
+          ? `[Proxmox 도구 실행 내역]\n${state.toolHistory.map((item, index) => `${index + 1}. 도구명: ${item.name}\n- 입력 인수: ${JSON.stringify(item.args)}\n- 실행 결과: ${JSON.stringify(item.result)}`).join('\n')}`
           : '[도구 실행 없음 (일반 대화 및 문의)]';
 
         const systemPrompt = `당신은 Proxmox VE 가상화 인프라 전담 AI 어시스턴트입니다.
@@ -493,8 +533,8 @@ ${toolInfo}`;
       } catch (err: any) {
         this.logger.error(`LLM conversational dialog synthesis failed: ${err.message}`);
         return {
-          finalResponse: state.toolResult
-            ? `✅ **도구 실행 결과 (${state.toolToCall?.name})**\n\n\`\`\`json\n${JSON.stringify(state.toolResult, null, 2)}\n\`\`\`\n\n*(주의: LLM 대화 합성 중 오류 발생: ${err.message})*`
+          finalResponse: state.toolHistory.length
+            ? `**도구 실행 내역**\n\n\`\`\`json\n${JSON.stringify(state.toolHistory, null, 2)}\n\`\`\`\n\n*(LLM 응답 생성 오류: ${err.message})*`
             : `❌ **LLM 응답 생성 실패**: ${err.message}`,
         };
       }
@@ -502,8 +542,8 @@ ${toolInfo}`;
 
     // JEV can still route and execute when the optional response LLM is unavailable.
     return {
-      finalResponse: state.toolToCall
-        ? `**${state.toolToCall.name} 결과**\n\n\`\`\`json\n${JSON.stringify(state.toolResult, null, 2)}\n\`\`\``
+      finalResponse: state.toolHistory.length
+        ? `**도구 실행 내역**\n\n\`\`\`json\n${JSON.stringify(state.toolHistory, null, 2)}\n\`\`\``
         : '요청을 확인했습니다. 인프라 조회나 변경 작업을 구체적으로 말씀해 주세요. 자연스러운 대화 응답을 사용하려면 LLM 연결도 설정해 주세요.',
     };
   }
@@ -670,7 +710,7 @@ ${toolInfo}`;
   router -->|일반 질문/대화| synthesizer[Synthesizer Node (응답 생성)]
   safety_check -->|파괴적 작업 감지| synthesizer
   safety_check -->|안전 작업 승인| tool_executor[Tool Executor (Proxmox 실행)]
-  tool_executor --> synthesizer
+  tool_executor --> router
   synthesizer --> __end__(__end__):::end
   classDef start fill:#10b981,stroke:#059669,color:#fff;
   classDef end fill:#6366f1,stroke:#4f46e5,color:#fff;`;
@@ -699,7 +739,7 @@ ${toolInfo}`;
           id: 'router',
           name: '⚡ JEV Router',
           label: 'JEV 의도 분석 & 도구 결정',
-          description: 'JEV 인프라 컨트롤러가 사용자 발화를 분석하여 실행할 Proxmox 도구 및 사양 파라미터를 정확하게 결정',
+          description: 'JEV가 사용자 요청과 누적 도구 결과를 보고 다음 작업 또는 종료를 결정한다. 최대 3회 실행하며 동일 도구 재실행은 차단한다.',
           type: 'router' as const,
           stateChanges: ['intent', 'toolToCall', 'decisionWhy', 'safetyEvaluation'],
         },
@@ -717,7 +757,7 @@ ${toolInfo}`;
           label: 'JEV Proxmox MCP 실행',
           description: 'Proxmox 가상화 인프라 API 또는 개발팀 자원 신청/승인 티켓 원격 실행',
           type: 'tool' as const,
-          stateChanges: ['toolResult'],
+          stateChanges: ['toolResult', 'toolHistory'],
         },
         {
           id: 'synthesizer',
@@ -743,7 +783,7 @@ ${toolInfo}`;
         { from: 'router', to: 'synthesizer', label: '일반 질문 / 대화 우회', condition: 'toolToCall == null' },
         { from: 'safety_check', to: 'synthesizer', label: '고위험 차단 (HITL 확인 대기)', condition: 'confirmationNeeded != null' },
         { from: 'safety_check', to: 'tool_executor', label: '가드레일 통과 (안전)', condition: 'confirmationNeeded == null' },
-        { from: 'tool_executor', to: 'synthesizer', label: '실행 결과 전달' },
+        { from: 'tool_executor', to: 'router', label: '결과 누적 후 JEV 재판단' },
         { from: 'synthesizer', to: '__end__', label: '최종 스트리밍 완료' },
       ],
     };

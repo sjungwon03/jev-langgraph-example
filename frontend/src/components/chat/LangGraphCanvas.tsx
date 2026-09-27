@@ -71,7 +71,7 @@ const nodeDetails: Record<string, { desc: string }> = {
     desc: '⚡ JEV 인프라 컨트롤러가 요청을 최초 수신하여 팀 권한(개발팀/인프라팀)과 거버넌스 정책을 바인딩합니다.',
   },
   router: {
-    desc: '⚡ JEV 라우터가 사용자 발화를 분석하여 실행할 Proxmox MCP 도구 및 사양 파라미터를 정확하게 결정합니다.',
+    desc: '⚡ JEV가 사용자 요청과 누적 도구 결과를 보고 다음 도구 또는 종료를 선택합니다. 중복 실행과 최대 실행 횟수는 코드에서 제한합니다.',
   },
   safety_check: {
     desc: '⚡ JEV 보안 거버넌스 정책 검증. VM 삭제/강제종료 등 파괴적 고위험 작업 감지 시 HITL 승인 토큰을 발급합니다.',
@@ -113,7 +113,7 @@ const fixedNodes: CanvasNode[] = [
   {
     id: 'router',
     name: '⚡ JEV Router',
-    sub: '의도 분석 & 도구 결정',
+    sub: '도구 결과 재판단',
     type: 'router',
     x: 175,
     y: 154,
@@ -194,7 +194,7 @@ const fixedEdges: CanvasEdge[] = [
     id: 'e-router-synth-bypass',
     from: 'router',
     to: 'synthesizer',
-    label: '일반 질의 우회 (Bypass)',
+    label: '일반 대화 / 작업 완료',
     condition: 'toolToCall == null',
     color: '#38bdf8',
     dashed: true,
@@ -217,10 +217,10 @@ const fixedEdges: CanvasEdge[] = [
     dashed: true,
   },
   {
-    id: 'e-tool-synth',
+    id: 'e-tool-router',
     from: 'tool_executor',
-    to: 'synthesizer',
-    label: '실행 결과 반환',
+    to: 'router',
+    label: '결과 검토 / 다음 작업',
     color: '#10b981',
   },
   {
@@ -288,17 +288,15 @@ export function LangGraphCanvas({
       if (curr === 'jev_service') {
         targetEdgeId = 'e-start-jev';
       } else if (curr === 'router') {
-        targetEdgeId = prev === 'jev_service' ? 'e-jev-router' : 'e-start-router';
+        targetEdgeId = prev === 'tool_executor' ? 'e-tool-router' : 'e-jev-router';
       } else if (curr === 'safety_check') {
         targetEdgeId = 'e-router-safety';
       } else if (curr === 'tool_executor') {
         targetEdgeId = 'e-safety-tool';
       } else if (curr === 'synthesizer') {
-        // Did we come from tool_executor, safety_check (HITL interrupted), or router bypass?
+        // After a tool, the router must decide to finish before synthesis.
         if (prev === 'safety_check' || executionState?.statusMessage?.includes('고위험') || executionState?.statusMessage?.includes('차단')) {
           targetEdgeId = 'e-safety-synth-interrupted';
-        } else if (executionState?.activeTool || prev === 'tool_executor' || executionState?.visitedNodeIds?.includes('tool_executor')) {
-          targetEdgeId = 'e-tool-synth';
         } else {
           targetEdgeId = 'e-router-synth-bypass';
         }
@@ -403,10 +401,10 @@ export function LangGraphCanvas({
       return { p0, p1: { x: bypassX, y: p0.y + 25 }, p2: { x: bypassX, y: p3.y - 25 }, p3 };
     }
 
-    if (edge.id === 'e-tool-synth') {
-      const p0 = { x: fromNode.x + fromNode.w / 2, y: fromNode.y + fromNode.h };
-      const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
-      return { p0, p1: { x: p0.x, y: p0.y + 10 }, p2: { x: p3.x, y: p3.y - 10 }, p3 };
+    if (edge.id === 'e-tool-router') {
+      const p0 = { x: fromNode.x, y: fromNode.y + fromNode.h / 2 };
+      const p3 = { x: toNode.x, y: toNode.y + toNode.h / 2 };
+      return { p0, p1: { x: 55, y: p0.y }, p2: { x: 55, y: p3.y }, p3 };
     }
 
     if (edge.id === 'e-synth-end') {
@@ -542,8 +540,8 @@ export function LangGraphCanvas({
         } else if (edge.id === 'e-safety-synth-interrupted') {
           // ONLY true if safety check interrupted to synthesizer for HITL approval (tool_executor was NOT visited)
           isVisitedEdge = visitedSet.has('safety_check') && visitedSet.has('synthesizer') && !visitedSet.has('tool_executor');
-        } else if (edge.id === 'e-tool-synth') {
-          isVisitedEdge = visitedSet.has('tool_executor') && visitedSet.has('synthesizer');
+        } else if (edge.id === 'e-tool-router') {
+          isVisitedEdge = visitedSet.has('tool_executor') && visitedSet.has('router');
         }
 
         ctx.save();
