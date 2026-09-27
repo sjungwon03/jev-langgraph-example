@@ -42,22 +42,23 @@ export function resolveJevAuthConfig(configService?: IConfigReader): JevAuthConf
     getVal('BASE_AUTH_PASS') ||
     getVal('LLM_BASIC_AUTH_PASS');
 
-  const token =
+  const basicToken =
     getVal('JEV_BASE_AUTH_TOKEN') ||
     getVal('JEV_BASIC_AUTH_TOKEN') ||
     getVal('BASE_AUTH_TOKEN');
+  const bearerToken = getVal('JEV_API_KEY') || getVal('TYPESAFE_API_KEY');
 
   // Determine if base auth should be activated
   const isExplicitlyTrue = ['true', '1', 'yes', 'on'].includes(useBaseAuthRaw.toLowerCase());
   const isAuthTypeBasic = authTypeRaw === 'basic';
-  const hasCredentials = Boolean(username && password) || Boolean(token);
+  const hasCredentials = Boolean(username && password) || Boolean(basicToken);
 
   const useBaseAuth = isExplicitlyTrue || isAuthTypeBasic || (useBaseAuthRaw !== 'false' && hasCredentials && authTypeRaw !== 'bearer');
 
   let authType: JevAuthType = 'none';
   if (useBaseAuth) {
     authType = 'basic';
-  } else if (authTypeRaw === 'bearer' || getVal('LLM_API_KEY') || getVal('JEV_API_KEY')) {
+  } else if (authTypeRaw === 'bearer' || bearerToken) {
     authType = 'bearer';
   }
 
@@ -66,7 +67,7 @@ export function resolveJevAuthConfig(configService?: IConfigReader): JevAuthConf
     authType,
     username: username || undefined,
     password: password || undefined,
-    token: token || undefined,
+    token: (useBaseAuth ? basicToken : bearerToken) || undefined,
   };
 }
 
@@ -77,6 +78,7 @@ export function resolveJevAuthConfig(configService?: IConfigReader): JevAuthConf
 export function createJevFetch(
   authConfig?: Partial<JevAuthConfig>,
   baseFetch: typeof globalThis.fetch = globalThis.fetch,
+  targetBaseUrl: string = process.env.JEV_BASE_URL || 'https://api.typesafe.ai',
 ): typeof globalThis.fetch {
   const resolved: JevAuthConfig = {
     useBaseAuth: false,
@@ -125,13 +127,12 @@ export function createJevFetch(
       urlString = (input as any).url;
     }
 
-    const jevBaseUrl = process.env.JEV_BASE_URL || 'https://api.typesafe.ai';
-    const isJevTarget = !urlString || urlString.startsWith('/') || (Boolean(jevBaseUrl) && urlString.startsWith(jevBaseUrl));
+    const isJevTarget = !urlString || urlString.startsWith('/') || urlString === targetBaseUrl || urlString.startsWith(`${targetBaseUrl.replace(/\/+$/, '')}/`);
     const alreadyHasAuth = Boolean(headersMap['authorization']);
 
     // Apply Base Auth (Basic Authentication) if enabled
     // Only apply if the request targets JEV, or if no authorization header was already set by caller (e.g. ChatOpenAI apiKey)
-    if ((resolved.useBaseAuth || resolved.authType === 'basic') && (isJevTarget || !alreadyHasAuth)) {
+    if ((resolved.useBaseAuth || resolved.authType === 'basic') && isJevTarget) {
       let basicHeaderValue = '';
 
       if (resolved.token) {
@@ -150,7 +151,7 @@ export function createJevFetch(
         headersMap['authorization'] = basicHeaderValue;
         headersMap['proxy-authorization'] = basicHeaderValue;
       }
-    } else if (resolved.authType === 'bearer' && resolved.token && (isJevTarget || !alreadyHasAuth)) {
+    } else if (resolved.authType === 'bearer' && resolved.token && isJevTarget && !alreadyHasAuth) {
       const bearerValue = resolved.token.startsWith('Bearer ')
         ? resolved.token
         : `Bearer ${resolved.token}`;
@@ -185,7 +186,7 @@ export class JevClient {
 
     this.baseUrl = (options.baseUrl || process.env.JEV_BASE_URL || 'https://api.typesafe.ai').replace(/\/+$/, '');
     this.timeoutMs = options.timeout || 30000;
-    this.customFetch = createJevFetch(this.config, options.baseFetch || globalThis.fetch);
+    this.customFetch = createJevFetch(this.config, options.baseFetch || globalThis.fetch, this.baseUrl);
 
     logger.log(
       `[JevClient] Initialized with baseUrl="${this.baseUrl}", useBaseAuth=${this.config.useBaseAuth}, authType="${this.config.authType}"`,

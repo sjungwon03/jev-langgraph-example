@@ -327,9 +327,10 @@ describe('통합 백엔드 테스트 스위트 (Unified Backend Test Suite)', ()
       assert.ok(agentService.getJevClient());
     });
 
-    it('should default to standard Bearer auth when JEV_USE_BASE_AUTH is not set', () => {
+    it('should configure Bearer auth from a JEV key, independently of the LLM key', () => {
       const configService = new ConfigService({
         LLM_API_KEY: 'test-llm-key',
+        JEV_API_KEY: 'test-jev-key',
       });
 
       const mockRemoteClient = {} as InfraRemoteClient;

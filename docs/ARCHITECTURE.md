@@ -41,7 +41,7 @@ flowchart TB
     Gateway -->|"/api/infra/*, /api/audit/*"| InfraService
     
     %% JEV와 LLM의 분리 인터페이스
-    AgentService <-->|"Chat Completion API (의도 분석 및 스펙 추론)"| LLMProvider
+    AgentService -->|"실행 결과 기반 최종 응답 생성"| LLMProvider
 
     AgentService -->|"HTTP RPC Tool Execution"| InfraService
     InfraService --> Redis
@@ -65,16 +65,14 @@ JEV는 **LLM 그 자체가 아니며, LLM에 결코 종속되지 않습니다.**
 graph TD
     User["👤 사용자 (개발팀 / 인프라팀)"]
 
-    subgraph LLM_Plane ["🤖 LLM (Cognitive & Dialog Plane) - '대화 및 지능 담당'"]
+    subgraph LLM_Plane ["🤖 LLM (Dialog Plane) - '최종 응답 담당'"]
         direction TB
-        LLM_NLU["1. 자연어 발화 심층 분석<br/>- 문맥 해석 & 뉘앙스 파악"]
-        LLM_Reason["2. 자원 요구사항 추론<br/>- 워크로드(AI/DB/Web) 스펙 제안"]
         LLM_Dialog["3. 실제 응답 및 대화 처리 (Conversational Synthesis)<br/>- 친절하고 명확한 한국어 답변 생성<br/>- 사용자 가이드 및 다음 권장 액션 제시"]
     end
 
     subgraph JEV_Plane ["⚡ JEV Control Plane (jev-langgraph-example) - '도구 호출 & 가드레일 전담'"]
         direction TB
-        JEV_Router["1. 툴 콜링 결정 (Tool Calling Orchestrator)<br/>- LLM 추론 결과를 토대로 실제 MCP 도구 선택 및 인수 바인딩"]
+        JEV_Router["1. Jev Choice 질문으로 도구와 신청 유형 결정<br/>- 코드에서 인수 추출 및 검증"]
         JEV_Guardrail["2. 3계층 심층 가드레일 (Deep Guardrails)<br/>- 역할 검증: DEV_TEAM은 승인 큐로 강제 격리<br/>- 위험 작업 차단: VM 삭제/강제종료 시 HITL 1회용 승인 토큰 발급"]
         JEV_State["3. LangGraph 상태 머신 (StateGraph Engine)<br/>- router ➔ safety_check ➔ tool_executor ➔ synthesizer 전이 관리"]
         JEV_Executor["4. Proxmox MCP Executor<br/>- HTTP RPC 원격 실행, ShedLock 분산 락, 감사 로그 영구 적재"]
@@ -86,8 +84,6 @@ graph TD
 
     %% Flow
     User -->|"1. 자연어 명령 전송"| JEV_Router
-    JEV_Router <-->|"2. 발화 의도 및 스펙 추론 위임"| LLM_NLU
-    LLM_NLU -.-> LLM_Reason
     
     JEV_Router -->|"3. 도구 호출 검증 및 거버넌스 평가"| JEV_Guardrail
     JEV_Guardrail -->|"4-A. 안전 및 승인 검증 통과"| JEV_Executor
@@ -128,6 +124,7 @@ sequenceDiagram
     autonumber
     actor User as 사용자 (개발팀/인프라팀)
     participant JEV_Agent as JEV Agent (infra-agent-service)
+    participant Jev as Jev System One API
     participant Ext_LLM as 외부 LLM (OpenAI / Ollama)
     participant JEV_Gate as JEV Safety Gate & Governance
     participant JEV_Infra as JEV Infra Core (infra-service)
@@ -135,12 +132,9 @@ sequenceDiagram
     User->>JEV_Agent: "2코어 4기가 20GB 디스크로 테스트 서버 신청해줘"
     Note over JEV_Agent: JEV routerNode 시작
 
-    alt LLM API Key 등록되어 있는 경우
-        JEV_Agent->>Ext_LLM: Chat Completion 요청<br/>(시스템 거버넌스 프롬프트 + 사용자 입력)
-        Ext_LLM-->>JEV_Agent: 구조화된 JSON 응답<br/>{ intent: "create_resource_request", spec: { cores: 2, memory: 4096, disk: 20 } }
-    else LLM 미설정 또는 오프라인 환경인 경우
-        JEV_Agent->>JEV_Agent: 자체 지능형 NLU 정규식 파서 가동<br/>(자동으로 2C / 4GB / 20GB 스펙 추출)
-    end
+    JEV_Agent->>Jev: 도구/신청 유형/워크로드/규모 Choice 질문 일괄 평가
+    Jev-->>JEV_Agent: 선택지별 확률과 선택 결과
+    JEV_Agent->>JEV_Agent: 허용 목록과 확률 검증, 명시된 CPU/RAM/Disk 추출
 
     Note over JEV_Agent,JEV_Gate: JEV 3중 가드레일 검증 단계
     JEV_Agent->>JEV_Gate: 역할 검증 (DEV_TEAM ➔ 직접 VM 생성 차단)
@@ -149,6 +143,8 @@ sequenceDiagram
     JEV_Agent->>JEV_Infra: POST /api/infra/requests (자원 신청 티켓 저장)
     JEV_Infra-->>JEV_Agent: 티켓 발급 완료 (REQ-XXXX, 상태: PENDING)
 
+    JEV_Agent->>Ext_LLM: 실행 결과 기반 최종 응답 작성
+    Ext_LLM-->>JEV_Agent: 사용자용 한국어 설명
     JEV_Agent-->>User: 최종 접수 마크다운 영수증 SSE 스트림 반환
 ```
 
@@ -179,7 +175,7 @@ stateDiagram-v2
     state router {
         direction TB
         RoleCheck: 역할 판별 (DEV_TEAM vs INFRA_TEAM)
-        LLMOrNLU: LLM 추론 또는 내장 NLU 파서 호출
+        JevChoice: Jev Choice 질문으로 도구와 요청 유형 결정
         SpecExtract: CPU/RAM/Disk 스펙 확정
     }
 

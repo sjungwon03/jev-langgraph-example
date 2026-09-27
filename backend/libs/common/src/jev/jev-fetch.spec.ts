@@ -1,5 +1,5 @@
 import { describe, it, beforeEach } from 'node:test';
-import assert from 'node:assert';
+import * as assert from 'node:assert';
 import { ConfigService } from '@nestjs/config';
 import { resolveJevAuthConfig, createJevFetch, JevClient } from './jev-fetch.service';
 
@@ -16,6 +16,16 @@ describe('JEV Library - Base Auth & Custom Fetch Override Tests', () => {
   });
 
   describe('resolveJevAuthConfig', () => {
+    it('uses the JEV key for Bearer auth without borrowing the LLM key', () => {
+      const config = resolveJevAuthConfig(new ConfigService({
+        JEV_API_KEY: 'jev-secret',
+        LLM_API_KEY: 'llm-secret',
+        JEV_USE_BASE_AUTH: 'false',
+      }));
+      assert.strictEqual(config.authType, 'bearer');
+      assert.strictEqual(config.token, 'jev-secret');
+    });
+
     it('should detect Base Auth when JEV_USE_BASE_AUTH is true', () => {
       const configService = new ConfigService({
         JEV_USE_BASE_AUTH: 'true',
@@ -62,6 +72,19 @@ describe('JEV Library - Base Auth & Custom Fetch Override Tests', () => {
   });
 
   describe('createJevFetch', () => {
+    it('does not send JEV credentials to another host', async () => {
+      let captured: Record<string, string> = {};
+      const mockFetch: typeof globalThis.fetch = async (_input, init) => {
+        captured = init?.headers as Record<string, string>;
+        return new Response('{}', { status: 200 });
+      };
+      const jevFetch = createJevFetch({ useBaseAuth: false, authType: 'bearer', token: 'jev-secret' }, mockFetch, 'https://api.typesafe.ai');
+      await jevFetch('https://api.openai.com/v1/chat/completions');
+      assert.strictEqual(captured.authorization, undefined);
+      await jevFetch('https://api.typesafe.ai/v1/systemone');
+      assert.strictEqual(captured.authorization, 'Bearer jev-secret');
+    });
+
     it('should inject Authorization: Basic header when Base Auth is enabled', async () => {
       let capturedUrl = '';
       let capturedInit: RequestInit | undefined;
@@ -83,6 +106,7 @@ describe('JEV Library - Base Auth & Custom Fetch Override Tests', () => {
           password: 'jev-password',
         },
         mockFetch,
+        'https://api.example.com',
       );
 
       const res = await customFetch('https://api.example.com/v1/decide', {

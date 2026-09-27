@@ -52,7 +52,7 @@ flowchart TB
     Gateway -->|"/api/infra/*, /api/audit/*"| InfraService
     
     %% JEV와 외부 LLM 간의 인터페이스
-    AgentService <-->|"Chat Completion API (의도 분석 및 스펙 추론)"| LLMProvider
+    AgentService -->|"실행 결과 기반 최종 응답 생성"| LLMProvider
 
     AgentService -->|"HTTP RPC Tool Execution"| InfraService
     InfraService --> Redis
@@ -78,13 +78,12 @@ graph LR
         MC["⚡ Proxmox MCP Executor (원격 실행 & 감사 로그)"]
     end
 
-    subgraph LLM ["🤖 LLM Cognitive & Dialog Plane (인지 & 대화)"]
-        NLU["💬 자연어 의도 파악 & 워크로드 추론"]
+    subgraph LLM ["🤖 LLM Dialog Plane (대화)"]
         RESP["✍️ 실제 사용자 응답 & 대화 처리 (Conversational Synthesis)"]
     end
 
     User -->|"자연어 입력"| JEV
-    JEV <-->|"의도 및 스펙 추론 요청"| NLU
+    User -->|"정형화된 Choice 판단"| TC
     JEV -->|"가드레일 검증 및 Proxmox 실행"| MC
     MC -->|"실행 결과 데이터"| SG
     SG -->|"결과와 컨텍스트 전달"| RESP
@@ -93,13 +92,13 @@ graph LR
     classDef jev fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#fff;
     classDef llm fill:#1e1b4b,stroke:#8b5cf6,stroke-width:2px,color:#fff;
     class TC,GR,SG,MC jev;
-    class NLU,RESP llm;
+    class RESP llm;
 ```
 
 | 구분 | ⚡ JEV (`jev-langgraph-example`) | 🤖 외부 LLM (OpenAI / Ollama 등) |
 | :--- | :--- | :--- |
 | **담당 영역** | **제어 및 실행 평면 (Control & Execution Plane)** | **인지 및 대화 평면 (Cognitive & Dialog Plane)** |
-| **주요 역할** | • **툴 콜링 오케스트레이션 (Tool Calling Decision)**<br/>• **3계층 가드레일 (역할 분리, 파괴적 작업 차단, HITL 토큰)**<br/>• LangGraph StateGraph 전이 및 상태 보존<br/>• Proxmox MCP 도구 원격 실행 & 분산 락/감사 로그 적재<br/>• LLM 없이도 동작하는 결정론적 폴백 엔진 내장 | • 사용자 자연어 발화의 문맥 및 뉘앙스 이해<br/>• 워크로드별 리소스 스펙(CPU/RAM/Disk) 추론 제안<br/>• **도구 실행 결과를 바탕으로 친절하고 자연스러운 대화형 답변 생성**<br/>• 비전문가도 이해하기 쉬운 안내 및 다음 단계 권장 |
+| **주요 역할** | • JEV Choice로 도구·신청 유형·워크로드·규모 판단<br/>• 역할·확률·인수 검증과 HITL 승인<br/>• LangGraph 상태 전이와 Proxmox MCP 실행<br/>• LLM 미설정 시 기본 결과 표시 | • **도구 실행 결과를 바탕으로 사용자용 대화형 답변 생성** |
 
 ## 🌟 핵심 기능 및 엔터프라이즈 거버넌스
 
@@ -112,13 +111,15 @@ graph LR
   - **"승인 및 자동 프로비저닝"** 클릭 시 Proxmox MCP를 호출하여 실제 클러스터에 VM 생성/디스크 확장을 즉시 실행하고 결과(`VMID`, `UPID`)를 영구 기록합니다.
 
 ### 2. 3계층 심층 방어 가드레일 (3-Tier Deep Guardrails)
-- **Tier 1 (역할 거버넌스 가드)**: 개발팀의 인프라 직접 변경 시도를 원천 차단하고 승인 대기 티켓으로 자동 격리.
+- **Tier 1 (역할 거버넌스 가드)**: 개발팀의 인프라 직접 변경은 차단하고, 명시적인 자원 신청 요청만 승인 대기 티켓으로 접수.
 - **Tier 2 (파괴적 작업 HITL 게이트)**: VM 삭제(`qemu_delete`), 강제 종료(`qemu_force_stop`) 등 위험 명령 감지 시 실행 즉시 중단(Interrupt) 및 1회용 승인 토큰(`cf_xxxx`, 5분 TTL) 발급.
 - **Tier 3 (마이크로서비스 MCP 가드)**: AI를 우회한 직접 API 호출 시에도 `confirm: true` 인수가 없으면 하부 실행 차단.
 
-### 3. 지능형 LLM & NLU 워크로드 사이징
-- LLM API 키가 있을 경우 `ChatOpenAI`가 자연어의 맥락을 분석하여 구조화된 JSON 파라미터를 산출합니다.
-- 오프라인/테스트 환경에서도 정규표현식 스펙 추출기 및 용도 기반 추론 엔진(AI/머신러닝은 8C/16GB/100GB, DB는 4C/8GB/50GB 등)이 동작합니다.
+### 3. JEV 의사결정과 LLM 응답
+- `router`는 JEV System One API에 도구 선택, 자원 신청 유형, 검토 결과, 워크로드, 규모를 한 요청의 독립적인 Choice 질문으로 보냅니다.
+- JEV가 고른 도구는 코드의 허용 목록, 선택 확률, 역할, 필수 인수 검증을 거칩니다. VMID, 노드, 요청 번호와 명시된 사양은 코드에서 추출합니다. 대상이 모호하면 실행하지 않고 추가 정보를 요청합니다.
+- `synthesizer`에서만 설정된 LLM을 호출하여 실행 결과를 사용자용 문장으로 정리합니다. LLM이 없으면 JEV 판단과 도구 실행은 유지하고 결과를 기본 형식으로 표시합니다.
+- JEV 인증은 `JEV_API_KEY` 또는 JEV Basic Auth, 대화 응답 모델 인증은 `LLM_API_KEY`로 각각 설정합니다.
 
 ### 4. L7 단일 통합 Swagger UI
 - 마이크로서비스로 분리되어 있음에도 Gateway가 모든 API 스펙을 집계하여 [http://localhost:3000/docs](http://localhost:3000/docs) 단일 주소에서 통합 문서를 제공합니다.
