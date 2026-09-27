@@ -51,6 +51,46 @@ describe('JEV routing and response separation', () => {
     expect(chunks.some((chunk) => chunk.type === 'confirmation_required')).toBe(true);
   });
 
+  it('resumes the paused graph on approval and runs the destructive tool once', async () => {
+    const { service, remote } = setup('qemu_delete', 'INFRA_TEAM');
+    const invoke = jest.fn().mockResolvedValue({ content: 'VM 삭제 작업이 완료되었습니다.' });
+    (service as any).llm = { invoke };
+    const chunks = await collect(service, 'node pve-01 VM 101 삭제', 'INFRA_TEAM');
+    const token = chunks.find((chunk) => chunk.type === 'confirmation_required')?.confirmation.token;
+    expect(token).toBeTruthy();
+    expect(remote.executeTool).not.toHaveBeenCalled();
+    expect(invoke).not.toHaveBeenCalled();
+    const graphRunId = service.getConfirmation(token)!.graphRunId;
+    expect((service as any).checkpointer.storage[graphRunId]).toBeDefined();
+    const result = await service.resolveConfirmation(token, true);
+    expect(result.status).toBe('EXECUTED');
+    expect(result.result).toEqual({ ok: true });
+    expect(result.response).toBe('VM 삭제 작업이 완료되었습니다.');
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(remote.executeTool).toHaveBeenCalledTimes(1);
+    expect(remote.executeTool).toHaveBeenCalledWith('qemu_delete', { node: 'pve-01', vmid: 101, confirm: true });
+    expect((service as any).checkpointer.storage[graphRunId]).toBeUndefined();
+    await expect(service.resolveConfirmation(token, true)).rejects.toThrow('유효하지 않거나');
+  });
+
+  it('resumes the paused graph on rejection without executing the tool', async () => {
+    const { service, remote } = setup('qemu_delete', 'INFRA_TEAM');
+    const chunks = await collect(service, 'node pve-01 VM 101 삭제', 'INFRA_TEAM');
+    const token = chunks.find((chunk) => chunk.type === 'confirmation_required')?.confirmation.token;
+    const result = await service.resolveConfirmation(token, false);
+    expect(result.status).toBe('REJECTED');
+    expect(remote.executeTool).not.toHaveBeenCalled();
+  });
+
+  it('rejects an expired confirmation without resuming the destructive tool', async () => {
+    const { service, remote } = setup('qemu_delete', 'INFRA_TEAM');
+    const chunks = await collect(service, 'node pve-01 VM 101 삭제', 'INFRA_TEAM');
+    const token = chunks.find((chunk) => chunk.type === 'confirmation_required')?.confirmation.token;
+    service.getConfirmation(token)!.expiresAt = Date.now() - 1;
+    await expect(service.resolveConfirmation(token, true)).rejects.toThrow('유효하지 않거나');
+    expect(remote.executeTool).not.toHaveBeenCalled();
+  });
+
   it('calls the LLM only after JEV routing and tool execution', async () => {
     const { service, remote, decide } = setup('list_nodes');
     const invoke = jest.fn().mockResolvedValue({ content: '노드 조회 결과입니다.' });

@@ -189,8 +189,11 @@ stateDiagram-v2
         IssueToken: 1회용 승인 토큰 발급 (cf_xxxx, TTL 5분)
     }
 
-    safety_check --> synthesizer: 보안 승인 필요 (confirmationNeeded != null)
+    safety_check --> approval_gate: 파괴적 작업 승인 필요
     safety_check --> tool_executor: 안전한 작업 또는 거버넌스 티켓 발행
+
+    approval_gate --> tool_executor: 승인 후 체크포인트 재개
+    approval_gate --> synthesizer: 거절 후 체크포인트 재개
 
     state tool_executor {
         direction TB
@@ -217,12 +220,16 @@ stateDiagram-v2
 - `toolToCall`: 호출할 도구명과 바인딩된 JSON 인수
 - `toolResult`: 원격 실행 결과
 - `toolHistory`: 이 그래프 실행에서 완료된 도구명, 인수, 결과의 누적 이력
+- `graphRunId`: 사용자 메시지마다 생성하는 체크포인트 실행 ID (`thread_id`)
+- `approvalGranted`: 승인 재개 후 파괴적 작업 실행 허용 여부
 - `confirmationNeeded`: 파괴적 작업 차단 시 발급된 승인 토큰 정보
 - `decisionWhy`: AI가 이 도구와 인수를 선택한 구체적 추론 근거
 - `safetyEvaluation`: 안전성 평가 등급 (`SAFE`, `GOVERNANCE`, `CAUTION`)
 - `finalResponse`: 최종 마크다운 응답
 
-라우터는 JEV Choice로 다음 작업을 고릅니다. 실행한 도구의 결과가 `toolHistory`에 쌓이면 같은 라우터가 결과를 검토합니다. `finish`가 선택되거나 더 필요한 작업이 없으면 응답 노드로 이동합니다. 동일 도구 재실행, 도구 오류 후 추가 실행, 3회 초과 실행은 코드에서 차단합니다. 파괴적 작업은 승인 토큰을 발급하고 이번 실행을 종료하며, 승인 API에서 별도로 실행됩니다. 체크포인터를 통한 그래프 내부 중단/재개는 구현되어 있지 않습니다.
+라우터는 JEV Choice로 다음 작업을 고릅니다. 실행한 도구의 결과가 `toolHistory`에 쌓이면 같은 라우터가 결과를 검토합니다. `finish`가 선택되거나 더 필요한 작업이 없으면 응답 노드로 이동합니다. 동일 도구 재실행, 도구 오류 후 추가 실행, 3회 초과 실행은 코드에서 차단합니다.
+
+파괴적 작업에서는 `safety_check`가 5분짜리 승인 토큰을 만들고 `approval_gate`의 `interrupt()`가 실행을 멈춥니다. LangGraph `MemorySaver`가 상태와 다음 노드를 `graphRunId`별 체크포인트에 보관합니다. 승인 API는 토큰과 대기 중 상태를 검증하고 `Command({ resume })`으로 **같은 그래프를 재개**합니다. 승인되면 `tool_executor`가 한 번 실행되고, 거절되면 도구 실행 없이 응답 노드로 이동합니다. 만료, 완료, 거절 시 체크포인트를 정리합니다. `MemorySaver`는 프로세스 메모리이므로 서비스 재시작이나 다른 인스턴스에서 재개할 수 없습니다. 운영 환경에서 이를 보장하려면 공유 영속 체크포인터가 필요합니다.
 
 ---
 

@@ -146,28 +146,19 @@ export class ChatService {
 
   async confirmAction(dto: ConfirmActionDto) {
     const { token, approved } = dto;
-    if (!approved) {
-      this.agentService.revokeConfirmation(token);
-      this.auditService.record('user', 'revoke_confirmation', 'token', token, 'REJECTED');
-      return {
-        status: 'REJECTED',
-        message: '작업 승인이 취소되었습니다.',
-      };
-    }
-
     try {
-      const result = await this.agentService.executeConfirmedAction(token);
+      const result = await this.agentService.resolveConfirmation(token, approved);
       this.auditService.record(
         'user',
         result.confirmation.action,
         'vm',
         String(result.confirmation.vmid),
-        'SUCCESS',
+        result.status === 'EXECUTED' ? 'SUCCESS' : result.status,
         result,
       );
       return {
-        status: 'EXECUTED',
-        message: '보안 승인이 완료되어 작업이 안전하게 수행되었습니다.',
+        status: result.status,
+        message: result.response || (approved ? '보안 승인이 완료되어 작업이 수행되었습니다.' : '작업 승인이 취소되었습니다.'),
         data: result,
       };
     } catch (err: any) {

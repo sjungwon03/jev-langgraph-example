@@ -192,13 +192,13 @@ export async function fetchDecisionLogs(limit = 50): Promise<AuditLog[]> {
 export async function confirmAction(
   token: string,
   approved: boolean,
-): Promise<{ success: boolean; message?: string; [key: string]: any }> {
+): Promise<{ status: 'EXECUTED' | 'REJECTED' | 'FAILED'; message?: string; [key: string]: any }> {
   const res = await fetch(`${API_BASE}/api/chat/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, approved }),
   });
-  return safeJson<{ success: boolean; message?: string; [key: string]: any }>(res, '작업 확인 처리에 실패했습니다.');
+  return safeJson<{ status: 'EXECUTED' | 'REJECTED' | 'FAILED'; message?: string; [key: string]: any }>(res, '작업 확인 처리에 실패했습니다.');
 }
 
 export async function createInstance(data: {
@@ -467,6 +467,5 @@ export async function fetchLangGraphDefinition(): Promise<LangGraphDefinition> {
   const res = await fetch(`${API_BASE}/api/chat/graph`);
   return safeJson<LangGraphDefinition>(res, 'LangGraph 워크플로우 정보를 불러오지 못했습니다.');
 }
-
 
 

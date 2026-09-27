@@ -300,6 +300,7 @@ export function ChatConsole() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let awaitingConfirmation = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -344,13 +345,14 @@ export function ChatConsole() {
                     : '일반 질문: 🤖 LLM Synthesizer 대화 답변 생성',
                 }));
               } else if (chunk.type === 'confirmation_required') {
+                awaitingConfirmation = true;
                 setExecutionState((prev) => ({
                   ...prev,
-                  activeNodeId: 'safety_check',
-                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'safety_check'])),
+                  activeNodeId: 'approval_gate',
+                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'approval_gate'])),
                   isLlmActive: false,
                   isJevActive: true,
-                  statusMessage: '⚠️ 고위험 작업 감지: ⚡ JEV Safety Gate Human-in-the-Loop 승인 대기',
+                  statusMessage: '⚠️ LangGraph 체크포인트 저장: 승인 또는 거절 대기',
                 }));
               } else if (chunk.type === 'tool_start') {
                 setExecutionState((prev) => ({
@@ -371,14 +373,16 @@ export function ChatConsole() {
                   statusMessage: '실행 결과 수신: ⚡ JEV가 다음 작업 또는 종료를 판단 중...',
                 }));
               } else if (chunk.type === 'done') {
-                setExecutionState((prev) => ({
-                  ...prev,
-                  activeNodeId: '__end__',
-                  visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, '__end__'])),
-                  isLlmActive: false,
-                  isJevActive: false,
-                  statusMessage: 'LangGraph 워크플로우 정상 완료',
-                }));
+                if (!awaitingConfirmation) {
+                  setExecutionState((prev) => ({
+                    ...prev,
+                    activeNodeId: '__end__',
+                    visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, '__end__'])),
+                    isLlmActive: false,
+                    isJevActive: false,
+                    statusMessage: 'LangGraph 워크플로우 정상 완료',
+                  }));
+                }
               }
 
               // Update active session messages
@@ -447,17 +451,17 @@ export function ChatConsole() {
       setIsStreaming(false);
       setExecutionState((prev) => ({
         ...prev,
-        activeNodeId: '__end__',
-        visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, '__end__'])),
+        activeNodeId: prev.activeNodeId === 'approval_gate' ? 'approval_gate' : '__end__',
+        visitedNodeIds: prev.activeNodeId === 'approval_gate' ? prev.visitedNodeIds : Array.from(new Set([...prev.visitedNodeIds, '__end__'])),
         isLlmActive: false,
-        isJevActive: false,
-        statusMessage: 'LangGraph 상태 머신 실행 완료',
+        isJevActive: prev.activeNodeId === 'approval_gate',
+        statusMessage: prev.activeNodeId === 'approval_gate' ? '체크포인트 중단: 승인 대기' : 'LangGraph 상태 머신 실행 완료',
       }));
 
       setTimeout(() => {
         setExecutionState((prev) => ({
           ...prev,
-          activeNodeId: null,
+          activeNodeId: prev.activeNodeId === 'approval_gate' ? 'approval_gate' : null,
         }));
       }, 4000);
     }
@@ -489,13 +493,21 @@ export function ChatConsole() {
         }),
       );
 
-      if (approved) {
+      if (res.status === 'EXECUTED') {
         setExecutionState((prev) => ({
           ...prev,
           activeNodeId: '__end__',
           visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, '__end__'])),
           isJevActive: false,
           statusMessage: '승인 작업 완료',
+        }));
+      } else {
+        setExecutionState((prev) => ({
+          ...prev,
+          activeNodeId: 'synthesizer',
+          visitedNodeIds: Array.from(new Set([...prev.visitedNodeIds, 'synthesizer'])),
+          isJevActive: false,
+          statusMessage: res.status === 'REJECTED' ? '거절 후 체크포인트 재개 완료' : '승인 후 실행 실패',
         }));
       }
     } catch (err: any) {

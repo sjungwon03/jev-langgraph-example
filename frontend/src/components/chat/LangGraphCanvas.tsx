@@ -76,6 +76,9 @@ const nodeDetails: Record<string, { desc: string }> = {
   safety_check: {
     desc: '⚡ JEV 보안 거버넌스 정책 검증. VM 삭제/강제종료 등 파괴적 고위험 작업 감지 시 HITL 승인 토큰을 발급합니다.',
   },
+  approval_gate: {
+    desc: 'LangGraph가 MemorySaver 체크포인트를 저장하고 interrupt로 멈춥니다. 승인 또는 거절 시 같은 실행을 재개합니다.',
+  },
   tool_executor: {
     desc: '⚡ JEV 컨트롤러 API를 통해 Proxmox VE 8.2 클러스터 명령 및 자원 티켓을 원격 실행합니다.',
   },
@@ -131,6 +134,17 @@ const fixedNodes: CanvasNode[] = [
     w: 230,
     h: 54,
     description: nodeDetails.safety_check.desc,
+  },
+  {
+    id: 'approval_gate',
+    name: '⏸ Approval Gate',
+    sub: '체크포인트 중단 / 재개',
+    type: 'safety',
+    x: 15,
+    y: 310,
+    w: 140,
+    h: 54,
+    description: nodeDetails.approval_gate.desc,
   },
   {
     id: 'tool_executor',
@@ -208,11 +222,26 @@ const fixedEdges: CanvasEdge[] = [
     color: '#a855f7',
   },
   {
-    id: 'e-safety-synth-interrupted',
+    id: 'e-safety-approval',
     from: 'safety_check',
-    to: 'synthesizer',
-    label: '고위험 차단 (HITL 대기)',
+    to: 'approval_gate',
+    label: '중단 / 저장',
     condition: 'confirmationNeeded',
+    color: '#f43f5e',
+    dashed: true,
+  },
+  {
+    id: 'e-approval-tool',
+    from: 'approval_gate',
+    to: 'tool_executor',
+    label: '승인 재개',
+    color: '#a855f7',
+  },
+  {
+    id: 'e-approval-synth',
+    from: 'approval_gate',
+    to: 'synthesizer',
+    label: '거절 재개',
     color: '#f43f5e',
     dashed: true,
   },
@@ -291,12 +320,14 @@ export function LangGraphCanvas({
         targetEdgeId = prev === 'tool_executor' ? 'e-tool-router' : 'e-jev-router';
       } else if (curr === 'safety_check') {
         targetEdgeId = 'e-router-safety';
+      } else if (curr === 'approval_gate') {
+        targetEdgeId = 'e-safety-approval';
       } else if (curr === 'tool_executor') {
-        targetEdgeId = 'e-safety-tool';
+        targetEdgeId = prev === 'approval_gate' ? 'e-approval-tool' : 'e-safety-tool';
       } else if (curr === 'synthesizer') {
         // After a tool, the router must decide to finish before synthesis.
-        if (prev === 'safety_check' || executionState?.statusMessage?.includes('고위험') || executionState?.statusMessage?.includes('차단')) {
-          targetEdgeId = 'e-safety-synth-interrupted';
+        if (prev === 'approval_gate') {
+          targetEdgeId = 'e-approval-synth';
         } else {
           targetEdgeId = 'e-router-synth-bypass';
         }
@@ -393,12 +424,22 @@ export function LangGraphCanvas({
       return { p0, p1: { x: p0.x, y: p0.y + 10 }, p2: { x: p3.x, y: p3.y - 10 }, p3 };
     }
 
-    if (edge.id === 'e-safety-synth-interrupted') {
-      // Left bypass curve around tool executor when HITL interrupts directly to synthesizer
+    if (edge.id === 'e-safety-approval') {
       const p0 = { x: fromNode.x, y: fromNode.y + fromNode.h / 2 };
-      const p3 = { x: toNode.x, y: toNode.y + 20 };
-      const bypassX = 115;
-      return { p0, p1: { x: bypassX, y: p0.y + 25 }, p2: { x: bypassX, y: p3.y - 25 }, p3 };
+      const p3 = { x: toNode.x + toNode.w / 2, y: toNode.y };
+      return { p0, p1: { x: 100, y: p0.y }, p2: { x: 85, y: p3.y - 12 }, p3 };
+    }
+
+    if (edge.id === 'e-approval-tool') {
+      const p0 = { x: fromNode.x + fromNode.w, y: fromNode.y + fromNode.h / 2 };
+      const p3 = { x: toNode.x, y: toNode.y + toNode.h / 2 };
+      return { p0, p1: { x: p0.x + 6, y: p0.y }, p2: { x: p3.x - 6, y: p3.y }, p3 };
+    }
+
+    if (edge.id === 'e-approval-synth') {
+      const p0 = { x: fromNode.x + fromNode.w / 2, y: fromNode.y + fromNode.h };
+      const p3 = { x: toNode.x, y: toNode.y + 25 };
+      return { p0, p1: { x: p0.x, y: p0.y + 18 }, p2: { x: p3.x - 20, y: p3.y }, p3 };
     }
 
     if (edge.id === 'e-tool-router') {
@@ -537,9 +578,12 @@ export function LangGraphCanvas({
         } else if (edge.id === 'e-safety-tool') {
           // Guardrail passed to tool execution
           isVisitedEdge = visitedSet.has('safety_check') && visitedSet.has('tool_executor');
-        } else if (edge.id === 'e-safety-synth-interrupted') {
-          // ONLY true if safety check interrupted to synthesizer for HITL approval (tool_executor was NOT visited)
-          isVisitedEdge = visitedSet.has('safety_check') && visitedSet.has('synthesizer') && !visitedSet.has('tool_executor');
+        } else if (edge.id === 'e-safety-approval') {
+          isVisitedEdge = visitedSet.has('approval_gate');
+        } else if (edge.id === 'e-approval-tool') {
+          isVisitedEdge = visitedSet.has('approval_gate') && visitedSet.has('tool_executor');
+        } else if (edge.id === 'e-approval-synth') {
+          isVisitedEdge = visitedSet.has('approval_gate') && visitedSet.has('synthesizer') && !visitedSet.has('tool_executor');
         } else if (edge.id === 'e-tool-router') {
           isVisitedEdge = visitedSet.has('tool_executor') && visitedSet.has('router');
         }

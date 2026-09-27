@@ -8,11 +8,12 @@ import {
   HumanMessage,
   SystemMessage,
 } from '@langchain/core/messages';
-import { StateGraph, Annotation, END, START } from '@langchain/langgraph';
+import { StateGraph, Annotation, END, START, MemorySaver, Command, interrupt } from '@langchain/langgraph';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface PendingConfirmation {
   token: string;
+  graphRunId: string;
   action: string;
   node: string;
   vmid: number;
@@ -77,6 +78,14 @@ export const InfraAgentState = Annotation.Root({
     reducer: (x, y) => y ?? x,
     default: () => '김개발',
   }),
+  graphRunId: Annotation<string>({
+    reducer: (x, y) => y ?? x,
+    default: () => '',
+  }),
+  approvalGranted: Annotation<boolean>({
+    reducer: (x, y) => y ?? x,
+    default: () => false,
+  }),
 });
 
 @Injectable()
@@ -84,6 +93,7 @@ export class LangGraphAgentService {
   private readonly logger = new Logger(LangGraphAgentService.name);
   private llm: any = null;
   private appGraph: any;
+  private readonly checkpointer = new MemorySaver();
   private jevAuthConfig: JevAuthConfig;
   private jevClient: JevClient;
   private customFetch: typeof globalThis.fetch;
@@ -152,6 +162,7 @@ export class LangGraphAgentService {
       .addNode('jev_governance', async (state) => this.jevGovernanceNode(state))
       .addNode('router', async (state) => this.routerNode(state))
       .addNode('safety_check', async (state) => this.safetyCheckNode(state))
+      .addNode('approval_gate', async (state) => this.approvalGateNode(state))
       .addNode('tool_executor', async (state) => this.toolExecutorNode(state))
       .addNode('synthesizer', async (state) => this.synthesizerNode(state))
       .addEdge(START, 'jev_governance')
@@ -161,13 +172,14 @@ export class LangGraphAgentService {
         return 'safety_check';
       })
       .addConditionalEdges('safety_check', (state) => {
-        if (state.confirmationNeeded) return 'synthesizer'; // Interrupted for confirmation
+        if (state.confirmationNeeded) return 'approval_gate';
         return 'tool_executor';
       })
+      .addConditionalEdges('approval_gate', (state) => state.approvalGranted ? 'tool_executor' : 'synthesizer')
       .addEdge('tool_executor', 'router')
       .addEdge('synthesizer', END);
 
-    this.appGraph = workflow.compile();
+    this.appGraph = workflow.compile({ checkpointer: this.checkpointer });
     this.logger.log('✅ LangGraph Infrastructure StateGraph compiled successfully.');
   }
 
@@ -183,12 +195,14 @@ export class LangGraphAgentService {
     vmid: number,
     args: Record<string, any>,
     description: string,
+    graphRunId: string,
   ): PendingConfirmation {
     const token = `cf_${uuidv4().replace(/-/g, '').slice(0, 16)}`;
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes TTL
 
     const confirmation: PendingConfirmation = {
       token,
+      graphRunId,
       action,
       node,
       vmid,
@@ -198,6 +212,12 @@ export class LangGraphAgentService {
     };
 
     this.pendingConfirmations.set(token, confirmation);
+    setTimeout(() => {
+      if (this.pendingConfirmations.get(token) === confirmation) {
+        this.pendingConfirmations.delete(token);
+        this.clearCheckpoint(graphRunId);
+      }
+    }, 5 * 60 * 1000).unref();
     this.logger.warn(
       `🛡️ Safety Gate: Created pending confirmation [${token}] for destructive action "${action}" on ${node}:${vmid}`,
     );
@@ -211,6 +231,7 @@ export class LangGraphAgentService {
 
     if (Date.now() > confirmation.expiresAt) {
       this.pendingConfirmations.delete(token);
+      this.clearCheckpoint(confirmation.graphRunId);
       return null;
     }
 
@@ -227,6 +248,13 @@ export class LangGraphAgentService {
 
   revokeConfirmation(token: string): boolean {
     return this.pendingConfirmations.delete(token);
+  }
+
+  private clearCheckpoint(graphRunId: string): void {
+    delete this.checkpointer.storage[graphRunId];
+    for (const key of Object.keys(this.checkpointer.writes)) {
+      if (JSON.parse(key)[0] === graphRunId) delete this.checkpointer.writes[key];
+    }
   }
 
   private getSystemConnectionGuideMessage(): string {
@@ -259,6 +287,9 @@ export class LangGraphAgentService {
     const text = typeof userMsg?.content === 'string' ? userMsg.content.trim() : '';
     const requester = state.requesterName || '김개발';
     if (!text) return { intent: 'chat', toolToCall: null, decisionWhy: '빈 요청', safetyEvaluation: 'SAFE' };
+    if (state.toolHistory.some((item) => this.isDestructiveAction(item.name))) {
+      return { intent: 'complete', toolToCall: null, decisionWhy: '승인된 파괴적 작업 완료', safetyEvaluation: 'SAFE' };
+    }
     if (state.toolHistory.length >= MAX_TOOL_STEPS) {
       return { intent: 'complete', toolToCall: null, decisionWhy: `최대 도구 실행 횟수 ${MAX_TOOL_STEPS}회 도달`, safetyEvaluation: 'SAFE' };
     }
@@ -422,6 +453,7 @@ export class LangGraphAgentService {
         tool.args.vmid,
         tool.args,
         `Proxmox VE [${tool.args.node || 'pve-node-01'}]의 VM ${tool.args.vmid}에 대한 ${tool.name} 작업입니다.`,
+        state.graphRunId,
       );
 
       return {
@@ -432,12 +464,29 @@ export class LangGraphAgentService {
     return {};
   }
 
+  /** Pauses the compiled graph; on resume the node re-runs and receives the approval decision. */
+  private async approvalGateNode(state: typeof InfraAgentState.State) {
+    const confirmation = state.confirmationNeeded;
+    if (!confirmation || !state.toolToCall) return { approvalGranted: false, toolToCall: null };
+    const decision = interrupt<{ token: string; action: string }, { token: string; approved: boolean }>({
+      token: confirmation.token,
+      action: confirmation.action,
+    });
+    if (decision.token !== confirmation.token || !decision.approved || Date.now() > confirmation.expiresAt) {
+      return { approvalGranted: false, toolToCall: null, confirmationNeeded: null, finalResponse: '작업 승인이 취소되었거나 만료되었습니다.' };
+    }
+    return { approvalGranted: true, confirmationNeeded: null };
+  }
+
   /**
    * 3. Tool Executor Node: Execute the Proxmox MCP Tool
    */
   private async toolExecutorNode(state: typeof InfraAgentState.State) {
     const tool = state.toolToCall;
     if (!tool) return {};
+    if (this.isDestructiveAction(tool.name) && !state.approvalGranted) {
+      return { toolResult: { error: '승인되지 않은 파괴적 작업은 실행할 수 없습니다.' } };
+    }
 
     try {
       this.logger.log(`Executing tool remotely: ${tool.name} with ${JSON.stringify(tool.args)}`);
@@ -455,7 +504,7 @@ export class LangGraphAgentService {
       } else if (tool.name === 'review_resource_request') {
         result = await this.remoteClient.reviewResourceRequest(tool.args.id, tool.args);
       } else {
-        result = await this.remoteClient.executeTool(tool.name, tool.args);
+        result = await this.remoteClient.executeTool(tool.name, this.isDestructiveAction(tool.name) ? { ...tool.args, confirm: true } : tool.args);
       }
       return { toolResult: result, toolHistory: [{ name: tool.name, args: tool.args, result }] };
     } catch (err: any) {
@@ -474,20 +523,7 @@ export class LangGraphAgentService {
       return { finalResponse: state.finalResponse };
     }
 
-    // 2. If confirmation is required, format approval request card
-    if (state.confirmationNeeded) {
-      const conf = state.confirmationNeeded;
-      const resp = `⚠️ **[보안 승인 필요 (Human-in-the-Loop)]**\n\n` +
-        `요청하신 작업은 인프라에 영향을 미치는 **파괴적 작업 (${conf.action})** 입니다.\n\n` +
-        `- **대상 노드**: \`${conf.node}\`\n` +
-        `- **대상 VMID**: \`${conf.vmid}\`\n` +
-        `- **작업 내용**: ${conf.description}\n` +
-        `- **승인 토큰**: \`${conf.token}\`\n\n` +
-        `정말 실행하시려면 하단의 **[승인]** 버튼을 클릭하거나, *"확인"* 또는 *"승인"*을 입력해 주세요. (5분 후 자동 만료)`;
-      return { finalResponse: resp };
-    }
-
-    // 3. When LLM is active, delegate actual conversational response to LLM
+    // Only completed or rejected executions reach this node. Pending approvals interrupt earlier.
     if (this.llm) {
       try {
         const lastMsg = state.messages[state.messages.length - 1];
@@ -567,11 +603,12 @@ ${toolInfo}`;
       messages: [new HumanMessage(prompt)],
       role,
       requesterName,
+      graphRunId: `run_${uuidv4()}`,
     };
 
     const startTime = Date.now();
     try {
-      const stream = await this.appGraph.stream(initialState, { streamMode: 'updates' });
+      const stream = await this.appGraph.stream(initialState, { streamMode: 'updates', configurable: { thread_id: initialState.graphRunId } });
       let currentToolName = '';
       let currentToolArgs: any = null;
       let finalResponse = '';
@@ -618,6 +655,7 @@ ${toolInfo}`;
                 },
                 threadId,
               };
+              yield { type: 'content', content: this.formatConfirmation(conf), threadId };
             } else if (currentToolName) {
               yield {
                 type: 'tool_start',
@@ -660,33 +698,45 @@ ${toolInfo}`;
         error: `에이전트 실행 중 오류가 발생했습니다: ${err.message}`,
         threadId,
       };
+    } finally {
+      if (![...this.pendingConfirmations.values()].some((item) => item.graphRunId === initialState.graphRunId)) {
+        this.clearCheckpoint(initialState.graphRunId);
+      }
     }
+  }
+
+  private formatConfirmation(conf: PendingConfirmation): string {
+    return `⚠️ **보안 승인 필요**\n\n${conf.description}\n\n- **대상 노드**: \`${conf.node}\`\n- **대상 VMID**: \`${conf.vmid}\`\n- **승인 토큰**: \`${conf.token}\`\n\n5분 안에 승인 또는 취소해 주세요.`;
   }
 
   /**
    * Execute an approved destructive action after token confirmation
    */
-  async executeConfirmedAction(token: string): Promise<any> {
+  async resolveConfirmation(token: string, approved: boolean): Promise<any> {
     const confirmation = this.consumeConfirmation(token);
     if (!confirmation) {
       throw new Error('유효하지 않거나 이미 만료된 승인 토큰입니다.');
     }
 
-    this.logger.log(
-      `Executing APPROVED destructive action: ${confirmation.action} on ${confirmation.node}:${confirmation.vmid}`,
-    );
-
-    // Call tool remotely with confirm: true
-    const result = await this.remoteClient.executeTool(confirmation.action, {
-      ...confirmation.args,
-      confirm: true,
-    });
-
-    return {
-      status: 'EXECUTED',
-      confirmation,
-      result,
-    };
+    const config = { configurable: { thread_id: confirmation.graphRunId } };
+    const checkpoint = await this.appGraph.getState(config);
+    if (!checkpoint.next?.includes('approval_gate') || checkpoint.values?.confirmationNeeded?.token !== token) {
+      throw new Error('이 승인 토큰에 연결된 대기 중 그래프가 없습니다.');
+    }
+    let result: any = null;
+    let response = '';
+    try {
+      const stream = await this.appGraph.stream(new Command({ resume: { token, approved } }), { ...config, streamMode: 'updates' });
+      for await (const chunk of stream) {
+        if (chunk.tool_executor) result = chunk.tool_executor.toolResult;
+        if (chunk.synthesizer) response = chunk.synthesizer.finalResponse;
+      }
+    } finally {
+      this.clearCheckpoint(confirmation.graphRunId);
+    }
+    if (approved && result === null) throw new Error('승인 후 도구 실행 결과를 확인하지 못했습니다.');
+    const status = !approved ? 'REJECTED' : result?.error ? 'FAILED' : 'EXECUTED';
+    return { status, confirmation, result, response };
   }
 
   /**
@@ -708,8 +758,10 @@ ${toolInfo}`;
   jev --> router[Router Node (JEV 작업 분류)]
   router -->|도구 실행 필요| safety_check{Safety Gate (보안 가드레일)}
   router -->|일반 질문/대화| synthesizer[Synthesizer Node (응답 생성)]
-  safety_check -->|파괴적 작업 감지| synthesizer
+  safety_check -->|파괴적 작업 감지| approval_gate{Approval Gate (체크포인트 중단)}
   safety_check -->|안전 작업 승인| tool_executor[Tool Executor (Proxmox 실행)]
+  approval_gate -->|승인 후 재개| tool_executor
+  approval_gate -->|거절 후 재개| synthesizer
   tool_executor --> router
   synthesizer --> __end__(__end__):::end
   classDef start fill:#10b981,stroke:#059669,color:#fff;
@@ -752,6 +804,14 @@ ${toolInfo}`;
           stateChanges: ['confirmationNeeded'],
         },
         {
+          id: 'approval_gate',
+          name: 'LangGraph Approval Gate',
+          label: '체크포인트 중단 / 승인 재개',
+          description: 'MemorySaver에 상태를 저장하고 interrupt로 중단한다. 승인 또는 거절 시 같은 graphRunId의 체크포인트를 Command.resume으로 재개한다.',
+          type: 'safety' as const,
+          stateChanges: ['approvalGranted', 'confirmationNeeded'],
+        },
+        {
           id: 'tool_executor',
           name: '⚡ JEV Tool Executor',
           label: 'JEV Proxmox MCP 실행',
@@ -781,8 +841,10 @@ ${toolInfo}`;
         { from: 'jev_governance', to: 'router', label: '2. 툴 콜링 분석' },
         { from: 'router', to: 'safety_check', label: '도구 호출 필요', condition: 'toolToCall != null' },
         { from: 'router', to: 'synthesizer', label: '일반 질문 / 대화 우회', condition: 'toolToCall == null' },
-        { from: 'safety_check', to: 'synthesizer', label: '고위험 차단 (HITL 확인 대기)', condition: 'confirmationNeeded != null' },
+        { from: 'safety_check', to: 'approval_gate', label: '고위험 작업 중단', condition: 'confirmationNeeded != null' },
         { from: 'safety_check', to: 'tool_executor', label: '가드레일 통과 (안전)', condition: 'confirmationNeeded == null' },
+        { from: 'approval_gate', to: 'tool_executor', label: '승인 후 재개', condition: 'approvalGranted == true' },
+        { from: 'approval_gate', to: 'synthesizer', label: '거절 후 재개', condition: 'approvalGranted == false' },
         { from: 'tool_executor', to: 'router', label: '결과 누적 후 JEV 재판단' },
         { from: 'synthesizer', to: '__end__', label: '최종 스트리밍 완료' },
       ],

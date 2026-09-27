@@ -371,6 +371,22 @@ export function LangGraphVisualizerContent({
 
               <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm space-y-1">
                 <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">graphRunId</span>
+                  <Badge variant="outline" className="text-[10px] font-mono">string</Badge>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">메시지별 체크포인트 thread_id</p>
+              </div>
+
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">approvalGranted</span>
+                  <Badge variant="outline" className="text-[10px] font-mono">boolean</Badge>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">승인 후 재개 시 파괴적 도구 실행 허용</p>
+              </div>
+
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm space-y-1">
+                <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">finalResponse</span>
                   <Badge variant="outline" className="text-[10px] font-mono">string</Badge>
                 </div>
