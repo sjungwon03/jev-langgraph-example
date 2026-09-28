@@ -179,12 +179,19 @@ stateDiagram-v2
     state router {
         direction TB
         RoleCheck: 역할 판별 (DEV_TEAM vs INFRA_TEAM)
-        JevChoice: Jev Choice 질문으로 도구와 요청 유형 결정
-        SpecExtract: CPU/RAM/Disk 스펙 확정
+        JevChoice: Jev Choice 질문으로 다음 도구만 결정
     }
 
-    router --> safety_check: 도구 호출 필요 (toolToCall != null)
+    state llm_tool_arguments {
+        direction TB
+        BindSchema: 선택된 단일 도구의 JSON Schema 바인딩
+        StructuredCall: LLM tool call 인수 생성 및 필수 값 검증
+    }
+
+    router --> llm_tool_arguments: 도구 호출 필요 (selectedTool != null)
     router --> synthesizer: 일반 대화 / 작업 완료 / 실행 제한
+    llm_tool_arguments --> safety_check: 인수 생성 완료 (toolToCall != null)
+    llm_tool_arguments --> synthesizer: 필수 인수 부족 / 생성 실패
 
     state safety_check {
         direction TB
@@ -220,6 +227,7 @@ stateDiagram-v2
 - `role`: 활성 사용자 역할 (`DEV_TEAM` | `INFRA_TEAM`)
 - `requesterName`: 요청자 성명/식별자
 - `intent`: 분류된 의도 (`create_resource_request`, `review_resource_request`, `qemu_start` 등)
+- `selectedTool`: JEV가 선택한 다음 도구명. 아직 실행 인수는 포함하지 않음
 - `toolToCall`: 호출할 도구명과 바인딩된 JSON 인수
 - `toolResult`: 원격 실행 결과
 - `toolHistory`: 이 그래프 실행에서 완료된 도구명, 인수, 결과의 누적 이력
@@ -230,7 +238,7 @@ stateDiagram-v2
 - `safetyEvaluation`: 안전성 평가 등급 (`SAFE`, `GOVERNANCE`, `CAUTION`)
 - `finalResponse`: 최종 마크다운 응답
 
-라우터는 JEV Choice로 다음 작업을 고릅니다. 실행한 도구의 결과가 `toolHistory`에 쌓이면 같은 라우터가 결과를 검토합니다. `finish`가 선택되거나 더 필요한 작업이 없으면 응답 노드로 이동합니다. 동일 도구 재실행, 도구 오류 후 추가 실행, 3회 초과 실행은 코드에서 차단합니다.
+라우터는 JEV Choice로 다음 작업만 고릅니다. 도구가 선택되면 `llm_tool_arguments`가 그 도구 하나의 JSON Schema를 LLM에 바인딩하고 structured tool call로 인수를 생성합니다. 실행한 도구의 결과가 `toolHistory`에 쌓이면 같은 JEV 라우터가 다음 작업 또는 `finish`를 다시 결정합니다. 동일 도구 재실행, 도구 오류 후 추가 실행, 3회 초과 실행은 코드에서 차단합니다.
 
 파괴적 작업에서는 `safety_check`가 5분짜리 승인 토큰을 만들고 `approval_gate`의 `interrupt()`가 실행을 멈춥니다. LangGraph `MemorySaver`가 상태와 다음 노드를 `graphRunId`별 체크포인트에 보관합니다. 승인 API는 토큰과 대기 중 상태를 검증하고 `Command({ resume })`으로 **같은 그래프를 재개**합니다. 승인되면 `tool_executor`가 한 번 실행되고, 거절되면 도구 실행 없이 응답 노드로 이동합니다. 만료, 완료, 거절 시 체크포인트를 정리합니다. `MemorySaver`는 프로세스 메모리이므로 서비스 재시작이나 다른 인스턴스에서 재개할 수 없습니다. 운영 환경에서 이를 보장하려면 공유 영속 체크포인터가 필요합니다.
 

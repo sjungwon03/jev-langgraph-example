@@ -132,24 +132,25 @@ flowchart TD
 
 ### 코드 검증
 
-Jev 결과를 그대로 실행하지 않는다. 코드가 허용 목록, 선택 확률(`0.65` 이상), `INFRA_TEAM` 전용 도구, 명시적 변경 의사, VMID·노드·REQ 번호 같은 필수 인수를 확인한다. VM 사양은 Jev의 워크로드·규모 Choice를 기본값으로 사용하고 원문에 명시된 CPU/RAM/디스크 숫자로 덮어쓴다. 인수 추출은 정규식 기반이며, 불명확하면 `clarification`으로 종료한다.
+Jev 결과를 그대로 실행하지 않는다. 코드는 허용 목록, 선택 확률(`0.65` 이상), `INFRA_TEAM` 전용 도구를 먼저 확인한다. Jev는 다음 도구명만 선택하고, 별도 `llm_tool_arguments` 노드가 선택된 단일 도구의 JSON Schema를 `ChatOpenAI.bindTools()`에 전달한다. LLM이 structured tool call 인수를 만들며, 코드는 VMID·노드·REQ 번호·크기 같은 필수 값과 enum을 다시 검증한다. 값이 없거나 형식이 맞지 않으면 도구를 실행하지 않고 사용자에게 보완을 요청한다.
 
 무한 순환과 중복 변경을 막기 위해 한 실행의 도구 호출을 최대 3회로 제한한다. 실행했던 **도구명**이 다시 선택되면 종료한다. 도구 결과가 오류면 후속 도구를 실행하지 않는다. 승인된 파괴적 도구를 실행한 뒤에도 종료한다. 같은 도구를 서로 다른 대상에 여러 번 적용하는 계획은 현재 지원하지 않는다.
 
 ### 외부 LLM
 
-`synthesizerNode()`만 `ChatOpenAI.invoke()`를 호출한다. 원문과 누적 도구 실행 결과를 시스템 메시지에 넣어 한국어 마크다운 답변을 생성한다. 도구 선택, 권한, 승인 판정에는 LLM 출력이 사용되지 않는다. 연결이 없거나 호출이 실패하면 결과 JSON 또는 고정 오류 문구를 반환한다. 권한 거절, 불명확한 요청, 승인 대기 안내처럼 코드가 이미 답변을 정한 경우에는 LLM을 호출하지 않는다.
+외부 LLM은 두 역할을 맡는다. `llmToolArgumentsNode()`는 JEV가 선택한 도구의 인수만 structured tool calling으로 생성하고, `synthesizerNode()`는 원문과 누적 실행 결과로 한국어 마크다운 답변을 만든다. 도구 선택, 역할 권한, 파괴적 작업 승인 판정은 여전히 JEV와 애플리케이션 코드가 담당한다. LLM 연결이 없거나 인수 생성에 실패하면 도구를 실행하지 않는다. 권한 거절과 승인 대기 같은 정책 결과도 LLM이 변경할 수 없다.
 
 인증 정보도 분리된다. Jev는 `JEV_API_KEY` 또는 Basic Auth와 `JEV_BASE_URL`을 사용하고, 최종 응답 모델은 `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`을 사용한다.
 
 ## 5. 승인 대기와 체크포인터를 정확히 설명하기
 
-1. `router`가 `qemu_delete` 같은 파괴적 작업을 고른다.
-2. `safety_check`가 대상과 인수를 포함한 5분짜리 `cf_...` 토큰을 만든다. 토큰과 `graphRunId`는 서비스의 메모리 맵에도 저장된다.
-3. `approval_gate`의 `interrupt()`가 그래프를 멈춘다. `MemorySaver`가 상태와 재개할 노드를 `graphRunId`에 저장한다. SSE는 `confirmation_required`와 승인 안내를 보낸다.
-4. `POST /api/chat/confirm`에 토큰과 `approved`가 들어오면 `resolveConfirmation()`이 토큰을 **한 번 소비**하고, 체크포인트의 다음 노드가 `approval_gate`인지 확인한다.
-5. `Command({ resume: { token, approved } })`로 같은 그래프 실행을 계속한다. `approval_gate`는 전달된 토큰과 만료 시각을 다시 확인한다.
-6. 승인 시 `tool_executor`가 `confirm: true`를 붙여 도구를 한 번 호출한다. 거절 시 도구 호출 없이 `synthesizer`로 간다. 완료/만료 시 체크포인트를 정리한다.
+1. `router`의 JEV가 `qemu_delete` 같은 파괴적 작업을 고른다.
+2. `llm_tool_arguments`가 해당 도구 스키마에 맞춰 대상과 인수를 생성하고 코드가 필수 값을 검증한다.
+3. `safety_check`가 대상과 인수를 포함한 5분짜리 `cf_...` 토큰을 만든다. 토큰과 `graphRunId`는 서비스의 메모리 맵에도 저장된다.
+4. `approval_gate`의 `interrupt()`가 그래프를 멈춘다. `MemorySaver`가 상태와 재개할 노드를 `graphRunId`에 저장한다. SSE는 `confirmation_required`와 승인 안내를 보낸다.
+5. `POST /api/chat/confirm`에 토큰과 `approved`가 들어오면 `resolveConfirmation()`이 토큰을 **한 번 소비**하고, 체크포인트의 다음 노드가 `approval_gate`인지 확인한다.
+6. `Command({ resume: { token, approved } })`로 같은 그래프 실행을 계속한다. `approval_gate`는 전달된 토큰과 만료 시각을 다시 확인한다.
+7. 승인 시 `tool_executor`가 `confirm: true`를 붙여 도구를 한 번 호출한다. 거절 시 도구 호출 없이 `synthesizer`로 간다. 완료/만료 시 체크포인트를 정리한다.
 
 **구분할 점:** `MemorySaver`와 승인 토큰 맵은 프로세스 메모리다. 재시작이나 다른 인스턴스에서 이어 받을 수 없다. 이것은 프로세스 내 `interrupt/resume` 구현이며 공유 영속 체크포인트 구현은 아니다. 도구 실행에 대한 분산 원자성·정확히 한 번 실행 보장도 없다. 운영 환경이라면 영속 체크포인터, 토큰 저장, 인증된 승인자 식별, 중복 실행 방지 키가 추가로 필요하다.
 
